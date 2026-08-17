@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "../api/authApi";
+import { authService } from "../api/auth";
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
 import type { ApiErrorResponse } from "@/shared/api/errorCodes";
+import { USE_MOCK } from "@/shared/api/client";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -12,26 +13,42 @@ export function LoginForm() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
 
+  const routeByOnboardingStep = (step: string) => {
+    // onboardingStep 기준으로 이어서 진행 (API.md 5절)
+    if (step === "PROFILE" || step === "WORK_CONTEXT") {
+      navigate("/onboarding");
+    } else if (step === "WORKSPACE") {
+      navigate("/workspaces");
+    } else {
+      navigate("/");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
     try {
-      const res = await authApi.login(email, password);
+      const res = await authService.login(email, password);
       setAuth(res.accessToken, res.user);
-
-      // onboardingStep 기준으로 이어서 진행 (API.md 5절)
-      if (res.user.onboardingStep === "PROFILE" || res.user.onboardingStep === "WORK_CONTEXT") {
-        navigate("/onboarding");
-      } else if (res.user.onboardingStep === "WORKSPACE") {
-        navigate("/workspaces");
-      } else {
-        navigate("/");
-      }
+      routeByOnboardingStep(res.user.onboardingStep);
     } catch (err) {
       const apiError = err as ApiErrorResponse;
       // INVALID_CREDENTIALS(401)만 정의되어 있음 (API.md 4.4절)
       setError(apiError.message ?? "로그인에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 백엔드 없이 흐름 테스트용 - mock 모드에서만 노출됨
+  const handleDemoLogin = async () => {
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const res = await authService.login("demo@ditto.app", "demo");
+      setAuth(res.accessToken, res.user);
+      routeByOnboardingStep(res.user.onboardingStep);
     } finally {
       setIsSubmitting(false);
     }
@@ -74,6 +91,17 @@ export function LoginForm() {
           회원가입
         </a>
       </p>
+
+      {USE_MOCK && (
+        <button
+          type="button"
+          onClick={handleDemoLogin}
+          disabled={isSubmitting}
+          className="w-full rounded border border-dashed border-gray-300 py-2 text-xs text-gray-500 disabled:opacity-50"
+        >
+          데모 계정으로 시작하기 (백엔드 없이 테스트용)
+        </button>
+      )}
     </form>
   );
 }

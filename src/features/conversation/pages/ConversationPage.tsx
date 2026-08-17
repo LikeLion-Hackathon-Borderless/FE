@@ -7,7 +7,7 @@ import { UnderstandingCard } from "@/features/understanding-card/components/Unde
 import { useCreateAIReview } from "@/features/ai-review/hooks/useAIReview";
 import { useCreateUnderstandingCard, useUnderstandingCard } from "@/features/understanding-card/hooks/useCardState";
 import { useMessages } from "../hooks/useConversations";
-import { conversationApi } from "../api/conversationApi";
+import { conversationService } from "../api/conversation";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AiReview } from "@/types/aiReview";
 
@@ -32,8 +32,8 @@ export function ConversationPage() {
 
   const handleSendAsIs = async (content: string) => {
     if (!conversationId) return;
-    // 일반 전송은 실제 API 호출 - AS_IS는 미확정, 카드/합의기록 생성 안 함 (API.md 8.4절, E02)
-    await conversationApi.sendMessage(conversationId, { content, deliveryMode: "AS_IS" });
+    // AS_IS는 미확정, 카드/합의기록 생성 안 함 (API.md 8.4절, E02)
+    await conversationService.sendMessage(conversationId, { content, deliveryMode: "AS_IS" });
     queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
   };
 

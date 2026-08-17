@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { onboardingApi } from "../api/onboardingApi";
+import { onboardingService } from "../api/onboarding";
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
 import type { ApiErrorResponse } from "@/shared/api/errorCodes";
 import type { WorkDay } from "@/types/user";
@@ -60,7 +60,7 @@ export function WorkContextStep({ onDone }: { onDone: () => void }) {
 
     setIsSubmitting(true);
     try {
-      const updated = await onboardingApi.saveWorkContext({
+      const updated = await onboardingService.saveWorkContext({
         timeZoneId,
         workStart: `${workStart}:00`,
         workEnd: `${workEnd}:00`,

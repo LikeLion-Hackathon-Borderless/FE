@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "../api/authApi";
+import { authService } from "../api/auth";
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
 import type { ApiErrorResponse } from "@/shared/api/errorCodes";
 
@@ -44,7 +44,7 @@ export function SignupForm() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await authApi.sendVerificationCode(email);
+      await authService.sendVerificationCode(email);
       startCooldown();
       setStep("CODE");
     } catch (err) {
@@ -59,7 +59,7 @@ export function SignupForm() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const res = await authApi.confirmVerificationCode(email, code);
+      const res = await authService.confirmVerificationCode(email, code);
       setVerificationToken(res.verificationToken);
       setStep("PROFILE");
     } catch (err) {
@@ -75,7 +75,7 @@ export function SignupForm() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const res = await authApi.signup({
+      const res = await authService.signup({
         email,
         password,
         displayName,

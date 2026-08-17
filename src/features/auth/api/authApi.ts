@@ -3,7 +3,7 @@ import type { AuthResponse } from "@/types/user";
 
 export const authApi = {
   sendVerificationCode: (email: string) =>
-    apiClient.post<void>("/auth/email-verifications", { email }),
+    apiClient.post<void>("/auth/email-verifications", { email }).then(() => undefined),
 
   confirmVerificationCode: (email: string, code: string) =>
     apiClient

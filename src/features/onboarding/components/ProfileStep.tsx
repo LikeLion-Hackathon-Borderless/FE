@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { onboardingApi } from "../api/onboardingApi";
+import { onboardingService } from "../api/onboarding";
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
 import type { ApiErrorResponse } from "@/shared/api/errorCodes";
 
 export function ProfileStep({ onDone }: { onDone: () => void }) {
   const { data: roles } = useQuery({
     queryKey: ["roles"],
-    queryFn: onboardingApi.getRoles,
+    queryFn: onboardingService.getRoles,
   });
 
   const currentUser = useAuthStore((s) => s.user);
@@ -28,7 +28,7 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
     setError(null);
     setIsSubmitting(true);
     try {
-      const updated = await onboardingApi.saveProfile({
+      const updated = await onboardingService.saveProfile({
         displayName,
         role,
         // role=OTHER면 customRole 필수, 그 외엔 null (API.md 5.3절)

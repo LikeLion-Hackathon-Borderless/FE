@@ -6,6 +6,7 @@ import type {
   MessageResponse,
 } from "@/types/conversation";
 
+// 실제 서버 호출. mock 모드에서는 conversation.ts 스위처가 conversationMock을 대신 씀
 export const conversationApi = {
   // 현재는 workspaceId 없이 호출, 워크스페이스 API 배포되면 쿼리 추가 (API.md 8.2절)
   listConversations: () =>
