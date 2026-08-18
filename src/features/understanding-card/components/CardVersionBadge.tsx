@@ -24,7 +24,7 @@ export function CardVersionBadge({
       ? "bg-primary-50 text-primary-600"
       : state === "PENDING"
         ? "bg-amber-50 text-amber-600"
-        : "bg-red-50 text-red-500";
+        : "bg-warn/10 text-warn";
 
   return (
     <span className={`rounded px-2 py-0.5 text-xs font-medium ${colorClass}`}>D-{revision}</span>

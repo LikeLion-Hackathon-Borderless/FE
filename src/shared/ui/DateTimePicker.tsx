@@ -82,11 +82,11 @@ function ZoneChip({
   return (
     <div
       className={`flex-1 rounded-md border px-2.5 py-1.5 ${
-        outside ? "border-red-200 bg-red-50" : "border-gray-100 bg-gray-50"
+        outside ? "border-warn/30 bg-warn/10" : "border-gray-100 bg-gray-50"
       }`}
     >
       <div className="text-[11px] text-gray-400">{label}</div>
-      <div className={`font-medium ${outside ? "text-red-600" : "text-gray-900"}`}>
+      <div className={`font-medium ${outside ? "text-warn" : "text-gray-900"}`}>
         {dayjs(instant).tz(zone).format("M/D (ddd) HH:mm")}
       </div>
     </div>

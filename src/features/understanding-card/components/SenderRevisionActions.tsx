@@ -41,7 +41,7 @@ export function SenderRevisionActions({
     `${dayjs(instant).tz(zone).format("M/D HH:mm")} (${zone === "America/Los_Angeles" ? "LA" : zone.split("/").pop()})`;
 
   return (
-    <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+    <div className="mt-4 rounded-lg border border-gray-200 bg-block-gray p-3">
       {/* 수신자 요청 요약 */}
       {latest && (
         <div className="mb-2.5 text-xs text-gray-600">
@@ -57,14 +57,14 @@ export function SenderRevisionActions({
           <button
             disabled={revision.isPending}
             onClick={() => submit(proposed, card.expectedOutcome, "역제안 기한 반영")}
-            className="rounded-full bg-primary-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-600 disabled:opacity-50"
+            className="rounded-pill bg-primary-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-600 disabled:opacity-50"
           >
             수락 · 카드 재생성
           </button>
           <button
             disabled={revision.isPending}
             onClick={() => setShowCounter((v) => !v)}
-            className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+            className="rounded-pill bg-pill-gray px-3 py-1.5 text-xs font-medium text-gray-600 hover:brightness-95 disabled:opacity-50"
           >
             역제안
           </button>
@@ -82,7 +82,7 @@ export function SenderRevisionActions({
           <button
             disabled={revision.isPending || !clarifyText.trim()}
             onClick={() => submit(card.deadline.instant, clarifyText, "요건 보강")}
-            className="rounded-full bg-primary-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-600 disabled:opacity-50"
+            className="rounded-pill bg-primary-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-600 disabled:opacity-50"
           >
             보강 · 카드 재생성
           </button>
@@ -103,7 +103,7 @@ export function SenderRevisionActions({
           <button
             disabled={revision.isPending || !counterInstant}
             onClick={() => submit(counterInstant, card.expectedOutcome, "발신자 역제안 기한")}
-            className="mt-2 w-full rounded-full bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="mt-2 w-full rounded-pill bg-ink px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             역제안 시각으로 카드 재생성
           </button>

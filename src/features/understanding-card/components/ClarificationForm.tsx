@@ -20,7 +20,7 @@ export function ClarificationForm({
   };
 
   return (
-    <div className="rounded border border-gray-200 bg-gray-50 p-3">
+    <div className="rounded border border-gray-200 bg-block-gray p-3">
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}

@@ -25,12 +25,12 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-red-100 bg-red-50 py-8 text-center">
-      <p className="text-sm text-red-600">{message ?? messageFor(error)}</p>
+    <div className="flex flex-col items-center gap-3 rounded-lg border border-warn/30 bg-warn/10 py-8 text-center">
+      <p className="text-sm text-warn">{message ?? messageFor(error)}</p>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
+          className="rounded-md border border-warn/40 px-3 py-1.5 text-xs font-medium text-warn hover:bg-warn/10"
         >
           다시 시도
         </button>

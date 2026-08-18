@@ -68,6 +68,12 @@ export function AIReviewPanel({
   const conflictActive = !!warning && (!altInstant || deadline !== altInstant);
 
   const pickDeadline = (instant: string) => {
+    // 같은 시각을 다시 고르면 선택 해제(미확정으로 되돌림)
+    if (deadlineConfirmed && deadline === instant) {
+      setDeadline("");
+      setDeadlineConfirmed(false);
+      return;
+    }
     setDeadline(instant);
     setDeadlineConfirmed(true);
     setErrorMsg(null);
@@ -109,7 +115,7 @@ export function AIReviewPanel({
     return (
       <PanelShell onClose={onClose}>
         {/* E10: 막지 않는다 — 원문 전송 안내 */}
-        <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-lg border border-warn/30 bg-warn/10 p-3 text-sm text-warn">
           AI 검토를 완료하지 못했어요. 패널을 닫고 원문 그대로 보낼 수 있어요.
         </div>
       </PanelShell>
@@ -119,7 +125,7 @@ export function AIReviewPanel({
   return (
     <PanelShell onClose={onClose}>
       {/* 상단 읽기전용 요약 */}
-      <dl className="mb-4 space-y-2 text-sm">
+      <dl className="mb-4 flex flex-col gap-5 text-sm">
         <SummaryRow label="업무" value={sf.task.value ?? "-"} />
         <SummaryRow label="담당자" value={recipientLabel} />
         <SummaryRow
@@ -133,6 +139,9 @@ export function AIReviewPanel({
         />
         <SummaryRow label="근거" value={review.evidence[0]?.fileName ?? "최근 대화"} />
       </dl>
+
+      {/* 요약/질문 구분선 (시안 #C8D2DF) */}
+      <div className="mb-4 h-px bg-[#C8D2DF]" />
 
       {/* 질문블록 A — 기한 확정 (C-3) */}
       <QuestionBlock message={'"기한"의 정확한 기준 시각이 필요해요. 어떤 시간으로 확정할까요?'}>
@@ -171,9 +180,9 @@ export function AIReviewPanel({
 
       {/* 근무시간 충돌 (C-6 / E04) */}
       {conflictActive && (
-        <div className="mb-3 rounded-lg border border-red-100 bg-white p-3">
-          <p className="mb-1 text-xs font-medium text-red-600">근무 시간 충돌</p>
-          <p className="mb-2.5 text-xs text-gray-600">{warning?.message}</p>
+        <div className="mb-3 rounded-lg bg-white p-3">
+          <p className="mb-1 text-sm font-medium tracking-[-0.28px] text-warn">근무 시간 충돌</p>
+          <p className="mb-2.5 text-sm tracking-[-0.28px] text-[#161719]">{warning?.message}</p>
           <div className="flex flex-wrap gap-1.5">
             <Pill selected={deadlineConfirmed && deadline === aiCandidate} onClick={() => pickDeadline(aiCandidate)}>
               {dayjs(aiCandidate).tz(senderZone).format("M/D HH:mm")} {senderZone}
@@ -190,13 +199,13 @@ export function AIReviewPanel({
         </div>
       )}
 
-      {errorMsg && <p className="mb-3 rounded-md bg-red-50 p-2.5 text-xs text-red-600">{errorMsg}</p>}
+      {errorMsg && <p className="mb-3 rounded-md bg-warn/10 p-2.5 text-xs text-warn">{errorMsg}</p>}
 
       <div className="pt-1">
         <button
           onClick={handleSend}
           disabled={!canSend}
-          className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-pill bg-ink px-3 py-2 text-xl font-medium tracking-[-0.4px] text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {busy ? "전송 중…" : "카드 생성 후 전송하기"}
         </button>
@@ -210,16 +219,19 @@ export function AIReviewPanel({
 
 function PanelShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <aside className="flex w-96 flex-shrink-0 flex-col border-l border-gray-100 bg-white">
+    <aside className="flex w-panel flex-shrink-0 flex-col border-l border-gray-100 bg-surface">
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="rounded bg-primary-50 px-1.5 py-0.5 text-[11px] font-medium text-primary-600">
+          <span className="rounded-lg bg-primary-100 px-2 py-1.5 text-xs font-medium text-[#148280]">
             AI 검토
           </span>
-          <span className="text-sm font-medium text-gray-900">공동 이해 준비</span>
+          <span className="text-base font-medium tracking-[-0.32px] text-[#171717]">공동 이해 준비</span>
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="닫기">
-          ✕
+        <button onClick={onClose} aria-label="닫기" className="text-gray-400 hover:opacity-70">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M19.0001 1L1 19.0001" stroke="#9299A3" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M1 1L19.0001 19.0001" stroke="#9299A3" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-4">{children}</div>
@@ -229,17 +241,17 @@ function PanelShell({ children, onClose }: { children: React.ReactNode; onClose:
 
 function SummaryRow({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
-    <div className="flex gap-4">
-      <dt className="w-14 flex-shrink-0 text-gray-400">{label}</dt>
-      <dd className={danger ? "font-medium text-red-600" : "text-gray-800"}>{value}</dd>
+    <div className="flex gap-4 text-sm font-medium tracking-[-0.28px]">
+      <dt className="w-14 flex-shrink-0 text-[#9299A3]">{label}</dt>
+      <dd className={danger ? "text-warn" : "text-[#323538]"}>{value}</dd>
     </div>
   );
 }
 
 function QuestionBlock({ message, children }: { message: string; children: React.ReactNode }) {
   return (
-    <div className="mb-3 rounded-lg bg-gray-50 p-3">
-      <p className="mb-2 text-xs text-gray-600">{message}</p>
+    <div className="mb-3 rounded-lg bg-block-gray p-3">
+      <p className="mb-2 text-sm font-medium tracking-[-0.28px] text-[#161719]">{message}</p>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
   );
@@ -264,9 +276,9 @@ function Pill({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-        selected ? "bg-primary-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-      } ${disabled ? "cursor-not-allowed opacity-50 hover:bg-gray-100" : ""}`}
+      className={`rounded-pill px-3 py-1.5 text-sm font-medium tracking-[-0.28px] transition-colors ${
+        selected ? "bg-primary-500 text-white" : "bg-pill-gray text-[#9299A3] hover:brightness-95"
+      } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
       {children}
     </button>

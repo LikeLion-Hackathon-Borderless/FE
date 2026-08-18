@@ -1,15 +1,27 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { MessageInput } from "../components/MessageInput";
 import { MessageBubble } from "../components/MessageBubble";
 import { AIReviewPanel } from "@/features/ai-review/components/AIReviewPanel";
 import { UnderstandingCard } from "@/features/understanding-card/components/UnderstandingCard";
 import { useCreateAIReview } from "@/features/ai-review/hooks/useAIReview";
 import { useCreateUnderstandingCard, useUnderstandingCard } from "@/features/understanding-card/hooks/useCardState";
-import { useMessages } from "../hooks/useConversations";
+import { useMessages, useConversationList } from "../hooks/useConversations";
 import { conversationService } from "../api/conversation";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AiReview } from "@/types/aiReview";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+function zoneShort(zone: string): string {
+  if (zone === "America/Los_Angeles") return "LA";
+  if (zone === "Asia/Seoul") return "Seoul";
+  return zone.split("/").pop() ?? zone;
+}
 
 export function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -21,6 +33,11 @@ export function ConversationPage() {
   const [supersededCards, setSupersededCards] = useState<import("@/types/understandingCard").UnderstandingCard[]>([]);
 
   const messagesQuery = useMessages(conversationId ?? null);
+  const conversationsQuery = useConversationList();
+  const other = conversationsQuery.data?.find((c) => c.id === conversationId)?.otherParticipant;
+  const otherTz = other?.timeZoneId ?? "America/Los_Angeles";
+  const otherHour = dayjs().tz(otherTz).hour();
+  const isOffHours = otherHour < 9 || otherHour >= 18; // 데모 휴리스틱 (실배포: 근무시간 데이터 기준)
   const createReview = useCreateAIReview(conversationId ?? "");
   const createCard = useCreateUnderstandingCard();
   const cardQuery = useUnderstandingCard(activeCardId);
@@ -69,10 +86,21 @@ export function ConversationPage() {
   }
 
   return (
-    <div className="flex h-screen">
-      <div className="flex flex-1 flex-col">
-        <header className="border-b border-gray-100 bg-primary-50 px-4 py-3">
-          <span className="text-sm font-medium">대화</span>
+    <div className="flex h-full">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex flex-shrink-0 items-center gap-2 border-b border-gray-100 bg-primary-50 px-4 py-3">
+          <div className="h-6 w-6 rounded-full bg-gray-200" />
+          <span className="text-sm font-medium text-gray-900">{other?.displayName ?? "대화"}</span>
+          {other && (
+            <>
+              <span className="rounded bg-primary-100 px-1.5 py-0.5 text-xs font-medium text-primary-600">
+                {zoneShort(otherTz)} {dayjs().tz(otherTz).format("HH:mm")}
+              </span>
+              <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
+                {isOffHours ? "근무 외 시간" : "근무 시간"}
+              </span>
+            </>
+          )}
         </header>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
