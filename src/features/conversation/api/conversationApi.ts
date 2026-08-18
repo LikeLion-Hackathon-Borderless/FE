@@ -30,6 +30,14 @@ export const conversationApi = {
       .post<MessageResponse>(`/conversations/${conversationId}/messages`, payload)
       .then((res) => res.data),
 
+  // 실서버는 POST /responses(11.4)에서 응답 메시지를 서버측 생성한다고 가정 -> 여기선 no-op, refetch로 반영.
+  // 백엔드가 안 만들면 이 자리에서 POST /messages로 전환 (연동 6번에서 결정).
+  addResponseMessage: (
+    _conversationId: string,
+    _content: string,
+    _sender: { id: string; displayName: string; timeZoneId: string },
+  ): Promise<MessageResponse | null> => Promise.resolve(null),
+
   markAsRead: (conversationId: string) =>
     apiClient.put<void>(`/conversations/${conversationId}/read`),
 };

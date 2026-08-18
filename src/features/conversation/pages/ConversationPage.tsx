@@ -18,6 +18,7 @@ export function ConversationPage() {
   const [activeReview, setActiveReview] = useState<AiReview | null>(null);
   const [draftContent, setDraftContent] = useState("");
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [supersededCards, setSupersededCards] = useState<import("@/types/understandingCard").UnderstandingCard[]>([]);
 
   const messagesQuery = useMessages(conversationId ?? null);
   const createReview = useCreateAIReview(conversationId ?? "");
@@ -49,6 +50,20 @@ export function ConversationPage() {
     setActiveReview(null);
   };
 
+  // 수신자 3버튼 응답 시 대화에 말풍선을 남긴다 (A방식, Image 6/10/12).
+  // 발신자는 이서연(self), 응답 주체는 수신자(카드 assignee=Alex)라 그 정체성으로 남긴다.
+  const handleCardResponded = async (bubbleText: string) => {
+    const card = cardQuery.data;
+    if (!card || !conversationId) return;
+    await conversationService.addResponseMessage(conversationId, bubbleText, {
+      id: card.assignee.userId,
+      displayName: card.assignee.displayName,
+      timeZoneId: card.deadline.viewerTimeZoneId,
+    });
+    queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
+    queryClient.invalidateQueries({ queryKey: ["understanding-card", card.id] });
+  };
+
   if (!conversationId) {
     return <p className="p-4 text-sm text-gray-400">대화를 선택하세요.</p>;
   }
@@ -66,8 +81,18 @@ export function ConversationPage() {
           ))}
 
           {/* 수신자 쪽 이해카드 데모 - 실제로는 별도 대화창(수신자 뷰)에서 보여야 함 */}
+          {/* 이전 버전(대체됨) 접힘 표시 - Image 7 */}
+          {supersededCards.map((c) => (
+            <UnderstandingCard key={`sup-${c.id}-${c.revision}`} card={c} viewerRole="recipient" superseded />
+          ))}
+
           {cardQuery.data && (
-            <UnderstandingCard card={cardQuery.data} viewerRole="recipient" />
+            <UnderstandingCard
+              card={cardQuery.data}
+              viewerRole="recipient"
+              onResponded={handleCardResponded}
+              onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
+            />
           )}
         </div>
 

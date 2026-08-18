@@ -17,8 +17,8 @@ function makeInitialCard(messageId: string): UnderstandingCard {
     task: "문서 3번 섹션 검토",
     assignee: { userId: "e54839db-5a97-433f-bec9-35d85cc0ea12", displayName: "Alex" },
     deadline: {
-      instant: "2026-07-30T09:00:00Z",
-      viewerLocal: "2026-07-30T02:00:00-07:00",
+      instant: "2026-07-31T00:00:00Z", // 7/30 17:00 LA (PDT) - Image 2/5와 시각 일치
+      viewerLocal: "2026-07-30T17:00:00-07:00",
       viewerTimeZoneId: "America/Los_Angeles",
     },
     expectedOutcome: "방향 자체 재검토 의견",

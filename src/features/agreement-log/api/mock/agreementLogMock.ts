@@ -2,7 +2,7 @@ import { mockDelay } from "@/shared/api/mockDelay";
 import type { AgreementLogListResponse } from "@/types/agreementLog";
 
 export const agreementLogMock = {
-  list: (_conversationId: string): Promise<AgreementLogListResponse> =>
+  list: (_conversationId: string, _before?: string): Promise<AgreementLogListResponse> =>
     mockDelay(
       {
         logs: [

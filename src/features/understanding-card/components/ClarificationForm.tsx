@@ -1,13 +1,22 @@
 import { useState } from "react";
 import { useRespondToCard } from "../hooks/useCardState";
 
-export function ClarificationForm({ cardId }: { cardId: string }) {
+export function ClarificationForm({
+  cardId,
+  onSubmitted,
+}: {
+  cardId: string;
+  onSubmitted?: (bubbleText: string) => void;
+}) {
   const [comment, setComment] = useState("");
   const respond = useRespondToCard(cardId);
 
   const handleSubmit = () => {
     if (!comment.trim()) return;
-    respond.mutate({ type: "REQUEST_CLARIFICATION", comment });
+    respond.mutate(
+      { type: "REQUEST_CLARIFICATION", comment },
+      { onSuccess: () => onSubmitted?.(comment) },
+    );
   };
 
   return (

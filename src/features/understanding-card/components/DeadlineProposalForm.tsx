@@ -1,45 +1,59 @@
 import { useState } from "react";
+import { DateTimePicker } from "@/shared/ui/DateTimePicker";
 import { useRespondToCard } from "../hooks/useCardState";
 
 export function DeadlineProposalForm({
   cardId,
   currentDeadline,
+  recipientZone = "America/Los_Angeles",
+  senderZone = "Asia/Seoul",
+  recipientName = "나",
+  onSubmitted,
 }: {
   cardId: string;
-  currentDeadline: string;
+  currentDeadline: string; // UTC instant
+  recipientZone?: string;
+  senderZone?: string;
+  recipientName?: string;
+  onSubmitted?: (bubbleText: string) => void;
 }) {
-  const [proposedLocal, setProposedLocal] = useState("");
+  const [comment, setComment] = useState("");
+  const [proposedInstant, setProposedInstant] = useState("");
   const respond = useRespondToCard(cardId);
 
   const handleSubmit = () => {
-    if (!proposedLocal) return;
-    // datetime-local 값을 그대로 보내면 로컬시각이라 서버는 UTC instant로 기대함 (API.md 2.3절)
-    // 실제 붙일 때 사용자 timezone 기준으로 변환하는 로직 필요 - 지금은 mock이라 그대로 전달
-    respond.mutate({
-      type: "REQUEST_DEADLINE_CHANGE",
-      comment: "기한 조정이 필요합니다.",
-      proposedDeadline: new Date(proposedLocal).toISOString(),
-    });
+    if (!comment.trim() || !proposedInstant) return;
+    // 수신자가 자기 존(LA) 벽시계로 고르면 DateTimePicker가 UTC instant로 변환해준다 (타임존 버그 해결)
+    respond.mutate(
+      { type: "REQUEST_DEADLINE_CHANGE", comment, proposedDeadline: proposedInstant },
+      { onSuccess: () => onSubmitted?.(comment) },
+    );
   };
 
   return (
     <div className="rounded border border-gray-200 bg-gray-50 p-3">
-      <p className="mb-2 text-xs text-gray-500">현재 기한: {currentDeadline}</p>
-      <div className="flex gap-2">
-        <input
-          type="datetime-local"
-          value={proposedLocal}
-          onChange={(e) => setProposedLocal(e.target.value)}
-          className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={respond.isPending || !proposedLocal}
-          className="rounded bg-primary-500 px-3 py-1 text-sm text-white disabled:opacity-50"
-        >
-          역제안 보내기
-        </button>
-      </div>
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder="예: 지금 다른 릴리스 대응 중이라 오늘 17:00은 빠듯해요. 내일 12:00(LA)로 조정 가능할까요?"
+        rows={2}
+        className="mb-2 w-full resize-none rounded border border-gray-300 p-2 text-sm"
+      />
+      <DateTimePicker
+        value={proposedInstant || currentDeadline}
+        onChange={setProposedInstant}
+        editZone={recipientZone}
+        editLabel={recipientName}
+        previewZone={senderZone}
+        previewLabel="이서연"
+      />
+      <button
+        onClick={handleSubmit}
+        disabled={respond.isPending || !comment.trim() || !proposedInstant}
+        className="mt-2 rounded bg-primary-500 px-3 py-1 text-sm text-white disabled:opacity-50"
+      >
+        역제안 보내기
+      </button>
     </div>
   );
 }
