@@ -11,6 +11,9 @@ import { useCreateAIReview } from "@/features/ai-review/hooks/useAIReview";
 import { useCreateUnderstandingCard, useUnderstandingCard } from "@/features/understanding-card/hooks/useCardState";
 import { useMessages, useConversationList } from "../hooks/useConversations";
 import { conversationService } from "../api/conversation";
+import { useAuthStore } from "@/shared/hooks/useAuthStore";
+import { isWithinWorkHours } from "@/shared/utils/workHours";
+import { USE_MOCK } from "@/shared/api/client";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AiReview } from "@/types/aiReview";
 
@@ -29,15 +32,45 @@ export function ConversationPage() {
 
   const [activeReview, setActiveReview] = useState<AiReview | null>(null);
   const [draftContent, setDraftContent] = useState("");
+  const [inputClearSignal, setInputClearSignal] = useState(0);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [supersededCards, setSupersededCards] = useState<import("@/types/understandingCard").UnderstandingCard[]>([]);
 
   const messagesQuery = useMessages(conversationId ?? null);
   const conversationsQuery = useConversationList();
   const other = conversationsQuery.data?.find((c) => c.id === conversationId)?.otherParticipant;
-  const otherTz = other?.timeZoneId ?? "America/Los_Angeles";
-  const otherHour = dayjs().tz(otherTz).hour();
-  const isOffHours = otherHour < 9 || otherHour >= 18; // 데모 휴리스틱 (실배포: 근무시간 데이터 기준)
+  const authUser = useAuthStore((s) => s.user);
+
+  // 두 데모 정체성: 이서연(로그인 유저, 근무시간 실데이터) / Alex(대화 상대, 계약에 근무시간 없어 기본값)
+  const ME = {
+    id: authUser?.id ?? "mock-user-self",
+    name: authUser?.displayName ?? "이서연",
+    tz: authUser?.timeZoneId ?? "Asia/Seoul",
+    workStart: authUser?.workStart,
+    workEnd: authUser?.workEnd,
+    workDays: authUser?.workDays,
+  };
+  const ALEX = {
+    id: other?.id ?? "mock-alex",
+    name: other?.displayName ?? "Alex",
+    tz: other?.timeZoneId ?? "America/Los_Angeles",
+    workStart: undefined,
+    workEnd: undefined,
+    workDays: undefined,
+  };
+
+  // 현재 보는 시점. 기본=로그인 유저(=배포 정답). 토글은 데모 전용 (실배포 제거).
+  const [viewerId, setViewerId] = useState<string>(ME.id);
+  const viewingAsMe = viewerId !== ALEX.id;
+  const partner = viewingAsMe ? ALEX : ME; // 헤더엔 상대가 뜸
+  const cardViewerRole: "sender" | "recipient" = viewingAsMe ? "sender" : "recipient";
+  const partnerOffHours = !isWithinWorkHours(
+    partner.tz,
+    partner.workStart,
+    partner.workEnd,
+    partner.workDays,
+  );
+
   const createReview = useCreateAIReview(conversationId ?? "");
   const createCard = useCreateUnderstandingCard();
   const cardQuery = useUnderstandingCard(activeCardId);
@@ -58,13 +91,20 @@ export function ConversationPage() {
   const handleReviewSent = async () => {
     if (!activeReview || !conversationId) return;
 
-    // AI 확정 전송은 아직 신규예정 API라 mock으로 처리, 이후 실제 send API로 교체
+    // 확정 전송: 발신자 원문 메시지를 대화에 남긴다 (시안: 민트 말풍선 + 카드).
+    // 실서버(10.4)는 /send가 메시지+카드를 함께 생성하므로, 연동 시엔 이 수동 추가를 제거.
+    await conversationService.addResponseMessage(conversationId, draftContent, {
+      id: ME.id,
+      displayName: ME.name,
+      timeZoneId: ME.tz,
+    });
     queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
 
-    // 확정 전송되면 이해카드가 이미 생성됨 (10.4절) - 데모에서는 수신자 쪽 카드 mock 별도 생성
+    // 확정 전송되면 이해카드가 생성됨 (10.4절) - 데모에서는 mock으로 별도 생성
     const card = await createCard.mutateAsync(`local-message-${Date.now()}`);
     setActiveCardId(card.id);
     setActiveReview(null);
+    setInputClearSignal((n) => n + 1); // 입력창 비우기
   };
 
   // 수신자 3버튼 응답 시 대화에 말풍선을 남긴다 (A방식, Image 6/10/12).
@@ -90,47 +130,71 @@ export function ConversationPage() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex flex-shrink-0 items-center gap-2 border-b border-gray-100 bg-primary-50 px-4 py-3">
           <div className="h-6 w-6 rounded-full bg-gray-200" />
-          <span className="text-sm font-medium text-gray-900">{other?.displayName ?? "대화"}</span>
-          {other && (
-            <>
-              <span className="rounded bg-primary-100 px-1.5 py-0.5 text-xs font-medium text-primary-600">
-                {zoneShort(otherTz)} {dayjs().tz(otherTz).format("HH:mm")}
-              </span>
-              <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
-                {isOffHours ? "근무 외 시간" : "근무 시간"}
-              </span>
-            </>
+          <span className="text-sm font-medium text-gray-900">{partner.name}</span>
+          <span className="rounded bg-primary-100 px-1.5 py-0.5 text-xs font-medium text-primary-600">
+            {zoneShort(partner.tz)} {dayjs().tz(partner.tz).format("HH:mm")}
+          </span>
+          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
+            {partnerOffHours ? "근무 외 시간" : "근무 시간"}
+          </span>
+
+          {/* 데모 전용: 시점 전환. USE_MOCK일 때만 노출 → 실배포(USE_MOCK=false)면 자동 숨김.
+              배포 시 viewerId는 로그인 유저로 고정되어 본인 시점만 보인다. */}
+          {USE_MOCK && (
+            <div className="ml-auto flex items-center gap-1 rounded-md bg-white p-0.5 text-xs">
+              <button
+                onClick={() => setViewerId(ME.id)}
+                className={`rounded px-2 py-1 ${viewingAsMe ? "bg-primary-500 text-white" : "text-gray-500"}`}
+              >
+                {ME.name} 시점
+              </button>
+              <button
+                onClick={() => setViewerId(ALEX.id)}
+                className={`rounded px-2 py-1 ${!viewingAsMe ? "bg-primary-500 text-white" : "text-gray-500"}`}
+              >
+                {ALEX.name} 시점
+              </button>
+            </div>
           )}
         </header>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           {messagesQuery.data?.messages.map((m) => (
-            <MessageBubble key={m.id} message={m} isMine={m.sender.id === "self"} />
+            <MessageBubble key={m.id} message={m} isMine={m.sender.id === viewerId} />
           ))}
 
-          {/* 수신자 쪽 이해카드 데모 - 실제로는 별도 대화창(수신자 뷰)에서 보여야 함 */}
-          {/* 이전 버전(대체됨) 접힘 표시 - Image 7 */}
+          {/* 카드는 발신자(이서연)가 만든 것 → 발신자 시점=오른쪽, 수신자 시점=왼쪽 (말풍선과 동일 정렬) */}
           {supersededCards.map((c) => (
-            <UnderstandingCard key={`sup-${c.id}-${c.revision}`} card={c} viewerRole="recipient" superseded />
+            <div key={`sup-${c.id}-${c.revision}`} className={`flex ${viewingAsMe ? "justify-end" : "justify-start"}`}>
+              <UnderstandingCard card={c} viewerRole={cardViewerRole} superseded />
+            </div>
           ))}
 
           {cardQuery.data && (
-            <UnderstandingCard
-              card={cardQuery.data}
-              viewerRole="recipient"
-              onResponded={handleCardResponded}
-              onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
-            />
+            <div className={`flex ${viewingAsMe ? "justify-end" : "justify-start"}`}>
+              <UnderstandingCard
+                card={cardQuery.data}
+                viewerRole={cardViewerRole}
+                onResponded={handleCardResponded}
+                onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
+              />
+            </div>
           )}
         </div>
 
-        <MessageInput onSendAsIs={handleSendAsIs} onRequestAIReview={handleRequestAIReview} />
+        <MessageInput
+          onSendAsIs={handleSendAsIs}
+          onRequestAIReview={handleRequestAIReview}
+          clearSignal={inputClearSignal}
+        />
       </div>
 
       {activeReview && (
         <AIReviewPanel
           review={activeReview}
           originalContent={draftContent}
+          recipientName={other?.displayName}
+          recipientTimeZoneId={other?.timeZoneId}
           onClose={() => setActiveReview(null)}
           onSent={handleReviewSent}
         />

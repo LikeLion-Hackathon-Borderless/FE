@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useConversationList } from "@/features/conversation/hooks/useConversations";
 import { DittoLogo } from "./DittoLogo";
 
@@ -7,6 +7,9 @@ import { DittoLogo } from "./DittoLogo";
 export function AppShell() {
   const conversationsQuery = useConversationList();
   const dms = conversationsQuery.data ?? [];
+  const { pathname } = useLocation();
+  // 합의기록 경로만 그쪽 탭, 나머지(대화목록·대화상세)는 "대화" 탭 활성
+  const onAgreementLog = pathname.startsWith("/agreement-log");
 
   return (
     <div className="flex h-screen flex-col bg-white">
@@ -14,8 +17,8 @@ export function AppShell() {
       <header className="flex flex-shrink-0 items-center justify-between border-b border-gray-100 px-6 py-3">
         <DittoLogo />
         <nav className="flex gap-1">
-          <TopTab to="/">대화</TopTab>
-          <TopTab to="/agreement-log">합의 기록</TopTab>
+          <TopTab to="/" active={!onAgreementLog}>대화</TopTab>
+          <TopTab to="/agreement-log" active={onAgreementLog}>합의 기록</TopTab>
         </nav>
       </header>
 
@@ -59,18 +62,15 @@ export function AppShell() {
   );
 }
 
-function TopTab({ to, children }: { to: string; children: React.ReactNode }) {
+function TopTab({ to, active, children }: { to: string; active: boolean; children: React.ReactNode }) {
   return (
     <NavLink
       to={to}
-      end
-      className={({ isActive }) =>
-        `rounded px-3 py-1.5 text-sm font-medium ${
-          isActive
-            ? "border border-primary-500 bg-[#DEF9F9] text-primary-600"
-            : "bg-pill-gray text-[#9299A3] hover:brightness-95"
-        }`
-      }
+      className={`rounded px-3 py-1.5 text-sm font-medium ${
+        active
+          ? "border border-primary-500 bg-[#DEF9F9] text-primary-600"
+          : "bg-pill-gray text-[#9299A3] hover:brightness-95"
+      }`}
     >
       {children}
     </NavLink>

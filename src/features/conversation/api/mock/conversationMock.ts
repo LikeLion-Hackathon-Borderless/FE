@@ -62,7 +62,7 @@ export const conversationMock = {
     const message: MessageResponse = {
       id: `mock-msg-${Date.now()}`,
       conversationId,
-      sender: { id: "self", displayName: "이서연", timeZoneId: "Asia/Seoul" },
+      sender: { id: "mock-user-self", displayName: "이서연", timeZoneId: "Asia/Seoul" },
       content: payload.content ?? "",
       sentAt: new Date().toISOString(),
       senderLocalSentAt: new Date().toISOString(),

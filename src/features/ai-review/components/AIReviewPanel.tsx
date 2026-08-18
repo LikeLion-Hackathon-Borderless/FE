@@ -65,7 +65,10 @@ export function AIReviewPanel({
 
   const warning = review.warnings.find((w) => w.code === ErrorCode.OUTSIDE_RECIPIENT_WORK_HOURS);
   const altInstant = warning?.suggestedDeadline ? dayjs(warning.suggestedDeadline).toISOString() : null;
-  const conflictActive = !!warning && (!altInstant || deadline !== altInstant);
+  // 기한 확정 후 AI 후보(충돌 시각)를 고른 상태 = 충돌 중
+  const isConflicting = !!warning && deadlineConfirmed && deadline === aiCandidate;
+  // 경고가 있으면 기한 확정 후 카드를 계속 보여준다 (충돌 → 조정됨 상태로 전환, B안)
+  const showConflictCard = !!warning && deadlineConfirmed;
 
   const pickDeadline = (instant: string) => {
     // 같은 시각을 다시 고르면 선택 해제(미확정으로 되돌림)
@@ -163,7 +166,7 @@ export function AIReviewPanel({
               editLabel={senderLabel}
               previewZone={recipientZone}
               previewLabel={recipientLabel}
-              previewOutsideHours={conflictActive}
+              previewOutsideHours={isConflicting}
             />
           </div>
         )}
@@ -178,26 +181,36 @@ export function AIReviewPanel({
         ))}
       </QuestionBlock>
 
-      {/* 근무시간 충돌 (C-6 / E04) */}
-      {conflictActive && (
-        <div className="mb-3 rounded-lg bg-white p-3">
-          <p className="mb-1 text-sm font-medium tracking-[-0.28px] text-warn">근무 시간 충돌</p>
-          <p className="mb-2.5 text-sm tracking-[-0.28px] text-[#161719]">{warning?.message}</p>
-          <div className="flex flex-wrap gap-1.5">
-            <Pill selected={deadlineConfirmed && deadline === aiCandidate} onClick={() => pickDeadline(aiCandidate)}>
-              {dayjs(aiCandidate).tz(senderZone).format("M/D HH:mm")} {senderZone}
-            </Pill>
-            {altInstant && (
-              <Pill onClick={() => pickDeadline(altInstant)}>
-                대안: {dayjs(altInstant).tz(recipientZone).format("M/D HH:mm")} {zoneShort(recipientZone)}
+      {/* 근무시간 충돌 (C-6 / E04) — 충돌 중이면 경고+대안, 대안 선택하면 조정됨 표시 (B안) */}
+      {showConflictCard &&
+        (isConflicting ? (
+          <div className="mb-3 rounded-lg bg-white p-3">
+            <p className="mb-1 text-sm font-medium tracking-[-0.28px] text-warn">근무 시간 충돌</p>
+            <p className="mb-2.5 text-sm tracking-[-0.28px] text-[#161719]">{warning?.message}</p>
+            <div className="flex flex-wrap gap-1.5">
+              <Pill selected onClick={() => pickDeadline(aiCandidate)}>
+                {dayjs(aiCandidate).tz(senderZone).format("M/D HH:mm")} {senderZone}
               </Pill>
-            )}
-            <Pill disabled title="P1 범위">
-              예약 전송
-            </Pill>
+              {altInstant && (
+                <Pill onClick={() => pickDeadline(altInstant)}>
+                  대안: {dayjs(altInstant).tz(recipientZone).format("M/D HH:mm")} {zoneShort(recipientZone)}
+                </Pill>
+              )}
+              <Pill disabled title="P1 범위">
+                예약 전송
+              </Pill>
+            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="mb-3 flex items-center gap-2 rounded-lg bg-white p-3">
+            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-xs text-white">
+              ✓
+            </span>
+            <p className="text-sm tracking-[-0.28px] text-[#161719]">
+              {dayjs(deadline).tz(recipientZone).format("M/D HH:mm")} {zoneShort(recipientZone)}로 조정됨 · Alex 근무시간 내
+            </p>
+          </div>
+        ))}
 
       {errorMsg && <p className="mb-3 rounded-md bg-warn/10 p-2.5 text-xs text-warn">{errorMsg}</p>}
 

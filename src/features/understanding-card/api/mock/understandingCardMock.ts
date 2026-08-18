@@ -15,7 +15,7 @@ function makeInitialCard(messageId: string): UnderstandingCard {
     state: "REVIEW",
     revision: 1,
     task: "문서 3번 섹션 검토",
-    assignee: { userId: "e54839db-5a97-433f-bec9-35d85cc0ea12", displayName: "Alex" },
+    assignee: { userId: "mock-alex", displayName: "Alex" },
     deadline: {
       instant: "2026-07-31T00:00:00Z", // 7/30 17:00 LA (PDT) - Image 2/5와 시각 일치
       viewerLocal: "2026-07-30T17:00:00-07:00",

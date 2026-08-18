@@ -12,7 +12,7 @@ export const agreementLogMock = {
             revision: 1,
             status: "PENDING",
             task: "문서 3번 섹션 검토",
-            deadline: "2026-07-30T09:00:00Z",
+            deadline: "2026-07-31T00:00:00Z", // 7/30 17:00 LA (카드와 일치)
             agreedBy: null,
             agreedAt: null,
             fileReferences: [

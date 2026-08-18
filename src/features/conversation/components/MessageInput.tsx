@@ -1,18 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface Props {
   onSendAsIs: (content: string) => void;
   onRequestAIReview: (content: string) => void;
   disabled?: boolean;
+  clearSignal?: number; // 값이 바뀌면 입력창 비움 (AI 검토 전송 완료 등)
 }
 
-export function MessageInput({ onSendAsIs, onRequestAIReview, disabled }: Props) {
+export function MessageInput({ onSendAsIs, onRequestAIReview, disabled, clearSignal }: Props) {
   const [content, setContent] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (clearSignal) {
+      setContent("");
+      setFile(null);
+    }
+  }, [clearSignal]);
 
   return (
     // 시안: bg Blue/200, border-top Blue/400, padding 20 20 40 20, gap 16
     <div className="flex flex-shrink-0 flex-col items-end gap-4 border-t border-primary-100 bg-primary-50 px-5 pb-10 pt-5">
-      {/* 흰색 박스: 텍스트 + 문서첨부(+칩)가 한 박스 안에 (시안 card_text) */}
+      {/* 흰색 박스: 텍스트 + 문서첨부(+칩) */}
       <div className="w-full self-stretch rounded-lg border border-gray-200 bg-white p-3">
         <textarea
           value={content}
@@ -21,11 +31,17 @@ export function MessageInput({ onSendAsIs, onRequestAIReview, disabled }: Props)
           rows={2}
           className="w-full resize-none text-sm placeholder:text-gray-400 focus:outline-none"
         />
-        <div className="mt-1 flex items-center gap-2">
-          {/* 문서 첨부 - 실제 업로드는 첨부 배치(29). 지금은 UI만 */}
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          {/* 문서 첨부 - A안: 파일 선택창 + 칩. 실제 서버 업로드는 첨부 배치(29). */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
           <button
             type="button"
-            title="첨부 기능 준비 중"
+            onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 rounded-md bg-pill-gray px-3 py-2 text-sm text-gray-500 hover:brightness-95"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -35,6 +51,22 @@ export function MessageInput({ onSendAsIs, onRequestAIReview, disabled }: Props)
             </svg>
             문서 첨부
           </button>
+
+          {/* 첨부된 파일 칩 */}
+          {file && (
+            <span className="flex items-center gap-2 rounded-md bg-primary-50 px-3 py-2 text-sm text-gray-700">
+              <span className="max-w-[200px] truncate font-medium">{file.name}</span>
+              <span className="text-xs text-gray-400">첨부됨</span>
+              <button
+                type="button"
+                onClick={() => setFile(null)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="첨부 제거"
+              >
+                ✕
+              </button>
+            </span>
+          )}
         </div>
       </div>
 
@@ -52,6 +84,7 @@ export function MessageInput({ onSendAsIs, onRequestAIReview, disabled }: Props)
           onClick={() => {
             onSendAsIs(content);
             setContent("");
+            setFile(null);
           }}
           className="rounded-md bg-primary-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
