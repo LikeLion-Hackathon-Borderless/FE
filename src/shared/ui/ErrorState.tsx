@@ -4,6 +4,10 @@ const MESSAGES: Record<string, string> = {
   ACCESS_DENIED: "이 작업을 할 권한이 없어요.",
   TIME_ZONE_REQUIRED: "타임존을 먼저 등록해 주세요.",
   AI_REVIEW_FAILED: "AI 검토에 실패했어요. 원문 그대로 보낼 수 있어요.",
+  AI_REVIEW_EXPIRED: "AI 검토 세션이 만료됐어요. 다시 검토해 주세요.",
+  CARD_INVALID_STATE: "카드 상태가 변경되어 처리할 수 없어요. 새로고침 후 다시 시도해 주세요.",
+  CARD_RESPONSE_NOT_ALLOWED: "지금은 이 카드에 응답할 수 없어요.",
+  REVISION_LIMIT_EXCEEDED: "카드 재생성 횟수를 초과했어요.",
   INTERNAL_SERVER_ERROR: "서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요.",
 };
 

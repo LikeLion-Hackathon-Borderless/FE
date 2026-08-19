@@ -54,7 +54,7 @@ export const understandingCardMock = {
     const card = cardStore.get(cardId);
     if (!card) return Promise.reject({ code: "UNDERSTANDING_CARD_NOT_FOUND", status: 404 });
     if (card.state === "AGREED") {
-      return Promise.reject({ code: "INVALID_CARD_STATE", status: 409 });
+      return Promise.reject({ code: "CARD_INVALID_STATE", status: 409 });
     }
 
     const response: CardResponse = {
@@ -80,7 +80,7 @@ export const understandingCardMock = {
     const card = cardStore.get(cardId);
     if (!card) return Promise.reject({ code: "UNDERSTANDING_CARD_NOT_FOUND", status: 404 });
     if (card.state !== "PENDING") {
-      return Promise.reject({ code: "INVALID_CARD_STATE", status: 409 });
+      return Promise.reject({ code: "CARD_INVALID_STATE", status: 409 });
     }
 
     const updated: UnderstandingCard = {
