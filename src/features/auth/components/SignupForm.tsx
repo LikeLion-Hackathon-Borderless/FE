@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { authService } from "../api/auth";
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
 import type { ApiErrorResponse } from "@/shared/api/errorCodes";
+import { useAutoAcceptPendingInvite } from "@/shared/hooks/useAutoAcceptPendingInvite";
 
 type Step = "EMAIL" | "CODE" | "PROFILE";
 
@@ -19,6 +20,7 @@ export function SignupForm() {
 
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
+  const tryAutoAcceptInvite = useAutoAcceptPendingInvite();
 
   const handleError = (err: unknown, fallback: string) => {
     const apiError = err as ApiErrorResponse;
@@ -83,7 +85,10 @@ export function SignupForm() {
         termsAccepted: true,
       });
       setAuth(res.accessToken, res.user);
-      navigate("/onboarding");
+      // 초대 링크로 들어왔다가 회원가입한 경우, 대기 중인 초대를 먼저 자동 수락 (API.md 7.7절)
+      // 수락 성공하면 onboardingStep도 서버가 COMPLETED로 처리하므로 온보딩 화면을 건너뛰어도 됨
+      const accepted = await tryAutoAcceptInvite();
+      if (!accepted) navigate("/onboarding");
     } catch (err) {
       handleError(err, "회원가입에 실패했습니다.");
     } finally {

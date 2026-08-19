@@ -11,8 +11,8 @@ export function WorkspaceStep({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     if (!name.trim()) return;
     const workspace = await createWorkspace.mutateAsync({ name });
-    // 워크스페이스 API 배포 전까지는 onboardingStep=COMPLETED로 서버 상태를 임의 전환하지 않음
-    // (FRONTEND_API_HANDOFF.md 14.1절) - 프론트 라우팅에서만 완료 취급
+    // 워크스페이스 생성 성공 시 서버가 onboardingStep을 COMPLETED로 전환함 (API.md 5절, 14.1절)
+    // -> useHydrateAuth 또는 다음 GET /users/me 호출에서 최신 user가 갱신됨
     setWorkspaceId(workspace.id);
     onDone();
   };
@@ -20,9 +20,6 @@ export function WorkspaceStep({ onDone }: { onDone: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <h2 className="text-sm font-medium text-gray-900">워크스페이스 만들기</h2>
-      <p className="text-xs text-gray-400">
-        아직 실제 서버 API가 없어서 mock으로 생성됩니다. 워크스페이스 API 배포되면 실제로 저장됩니다.
-      </p>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
