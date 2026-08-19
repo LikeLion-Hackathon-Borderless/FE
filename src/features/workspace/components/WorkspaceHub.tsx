@@ -15,7 +15,7 @@ export function WorkspaceHub() {
   if (isLoading) return <p className="p-6 text-sm text-gray-400">불러오는 중...</p>;
 
   return (
-    <div className="mx-auto max-w-sm py-12">
+    <div className="mx-auto max-w-sm px-4 py-12">
       <h1 className="mb-4 text-lg font-medium text-gray-900">워크스페이스 선택</h1>
       <div className="space-y-2">
         {workspaces?.map((ws) => (
