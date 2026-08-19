@@ -34,6 +34,46 @@ function makeInitialCard(messageId: string): UnderstandingCard {
 }
 
 export const understandingCardMock = {
+  // 실서버는 /ai-reviews/{id}/send 시 확정된 값으로 카드를 트랜잭션으로 생성함(API.md 10.5절).
+  // mock도 동일하게, "이해 돕기"(createFromMessage)와는 별도로 확정값 기반 카드를 직접 만든다.
+  createConfirmedCard: (
+    messageId: string,
+    params: {
+      task: string;
+      assigneeDisplayName: string;
+      deadlineInstant: string;
+      recipientTimeZoneId: string;
+      expectedOutcome: string;
+      originalContent: string;
+      translatedContent: string;
+    },
+  ): UnderstandingCard => {
+    const card: UnderstandingCard = {
+      id: `mock-card-${messageId}`,
+      messageId,
+      state: "REVIEW",
+      revision: 1,
+      task: params.task,
+      assignee: { userId: "mock-alex", displayName: params.assigneeDisplayName },
+      deadline: {
+        instant: params.deadlineInstant,
+        viewerLocal: params.deadlineInstant,
+        viewerTimeZoneId: params.recipientTimeZoneId,
+      },
+      expectedOutcome: params.expectedOutcome,
+      originalContent: params.originalContent,
+      translatedContent: params.translatedContent,
+      attachments: [],
+      evidence: [],
+      latestResponse: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      needsClarification: false,
+    };
+    cardStore.set(card.id, card);
+    return card;
+  },
+
   createFromMessage: (messageId: string): Promise<UnderstandingCard> => {
     const existingKey = [...cardStore.values()].find((c) => c.messageId === messageId);
     if (existingKey) return mockDelay(existingKey, 200);

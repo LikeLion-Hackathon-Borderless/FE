@@ -24,6 +24,14 @@ const messageStore: Record<string, MessageResponse[]> = {
   ],
 };
 
+// 실서버는 /ai-reviews/{id}/send가 메시지+카드를 한 트랜잭션으로 만듦(API.md 10.5절).
+// mock에서도 같은 결과를 내야 해서, aiReviewMock이 만든 메시지를 여기 공유 저장소에
+// 직접 밀어넣을 수 있게 export. (다른 mock 파일에서 import해서 씀)
+export function pushMockMessage(conversationId: string, message: MessageResponse) {
+  if (!messageStore[conversationId]) messageStore[conversationId] = [];
+  messageStore[conversationId].push(message);
+}
+
 function getConversationSummary(): ConversationSummary {
   const messages = messageStore[DEMO_CONVERSATION_ID];
   const latest = messages[messages.length - 1];

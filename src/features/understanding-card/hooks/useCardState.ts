@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { USE_MOCK } from "@/shared/api/client";
-import { understandingCardMock } from "../api/mock/understandingCardMock";
+import { understandingCardService } from "../api/understandingCard";
 import type { CardResponseRequest, CardRevisionRequest } from "@/types/understandingCard";
 
-// 실제 API 배포되면 understandingCardMock -> understandingCardApi로 교체
-const impl = USE_MOCK ? understandingCardMock : understandingCardMock; // TODO: 실제 구현 연결
+// 이전엔 여기서 항상 understandingCardMock을 직접 썼음 (USE_MOCK=false여도 mock 강제 사용).
+// understandingCard.ts 스위처가 이미 만들어져 있었는데 이 훅 파일만 그걸 안 쓰고 있었던 것.
+// 그래서 실서버가 준 진짜 카드ID로 조회해도 mock 저장소에서 못 찾아 404가 나고,
+// 화면에 카드가 전혀 안 뜨는 버그가 있었음. 스위처를 쓰도록 교체.
+const impl = understandingCardService;
 
 export function useUnderstandingCard(cardId: string | null) {
   return useQuery({

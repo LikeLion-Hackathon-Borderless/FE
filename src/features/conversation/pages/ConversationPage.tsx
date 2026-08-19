@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -8,7 +8,7 @@ import { MessageBubble } from "../components/MessageBubble";
 import { AIReviewPanel } from "@/features/ai-review/components/AIReviewPanel";
 import { UnderstandingCard } from "@/features/understanding-card/components/UnderstandingCard";
 import { useCreateAIReview } from "@/features/ai-review/hooks/useAIReview";
-import { useCreateUnderstandingCard, useUnderstandingCard } from "@/features/understanding-card/hooks/useCardState";
+import { useUnderstandingCard } from "@/features/understanding-card/hooks/useCardState";
 import { useMessages, useConversationList } from "../hooks/useConversations";
 import { conversationService } from "../api/conversation";
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
@@ -17,6 +17,7 @@ import { zoneShort } from "@/shared/utils/timezoneLabel";
 import { USE_MOCK } from "@/shared/api/client";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AiReview } from "@/types/aiReview";
+import type { MessageResponse } from "@/types/conversation";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -56,9 +57,22 @@ export function ConversationPage() {
 
   // 현재 보는 시점. 기본=로그인 유저(=배포 정답). 토글은 데모 전용 (실배포 제거).
   const [viewerId, setViewerId] = useState<string>(ME.id);
+
+  // useState(ME.id)는 최초 렌더 시점에만 평가됨. 로그인 유저 정보(authUser)가
+  // 그 이후에 늦게 로딩 완료되면(흔한 타이밍) viewerId가 임시값("mock-user-self")에
+  // 고정된 채로 안 바뀌는 버그가 있었음. 그 결과 실제 서버가 보내는 진짜 UUID인
+  // sender.id와 viewerId가 서로 안 맞아서, 본인이 보낸 메시지도 "상대방이 보낸 것"으로
+  // 표시(회색)되는 문제가 있었음. authUser.id가 갱신되면 (Alex 시점 데모 토글 중이
+  // 아닐 때만) viewerId를 실제 로그인 유저 id로 다시 맞춰준다.
+  useEffect(() => {
+    if (authUser?.id && viewerId !== ALEX.id) {
+      setViewerId(authUser.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser?.id]);
+
   const viewingAsMe = viewerId !== ALEX.id;
   const partner = viewingAsMe ? ALEX : ME; // 헤더엔 상대가 뜸
-  const cardViewerRole: "sender" | "recipient" = viewingAsMe ? "sender" : "recipient";
   const partnerOffHours = !isWithinWorkHours(
     partner.tz,
     partner.workStart,
@@ -67,8 +81,36 @@ export function ConversationPage() {
   );
 
   const createReview = useCreateAIReview(conversationId ?? "");
-  const createCard = useCreateUnderstandingCard();
   const cardQuery = useUnderstandingCard(activeCardId);
+
+  // 데모(mock)에서는 한 브라우저에서 "이서연 시점 / Alex 시점" 토글로 양쪽 다 미리보기 할 수 있게
+  // 만들어놨는데, 이 토글 자체가 USE_MOCK일 때만 화면에 노출됨. 근데 cardViewerRole 계산은
+  // 이 토글에만 의존하고 있어서, 실서버(USE_MOCK=false)로 실제 두 계정이 각자 로그인해서
+  // 보면 토글이 아예 없으니 viewingAsMe가 항상 true로 고정되고, 그 결과 수신자 계정으로
+  // 봐도 "발신자"로만 취급되어 3버튼 응답 UI가 영원히 안 뜨는 문제가 있었음.
+  // 실서버에서는 로그인한 실제 유저ID와 카드의 담당자(assignee.userId)를 직접 비교해서
+  // 판정한다 - 데모 토글에 기대지 않음.
+  const cardViewerRole: "sender" | "recipient" = USE_MOCK
+    ? (viewingAsMe ? "sender" : "recipient")
+    : cardQuery.data && authUser?.id === cardQuery.data.assignee.userId
+      ? "recipient"
+      : "sender";
+
+  // activeCardId는 컴포넌트 로컬 상태라서, 다른 탭 갔다가 돌아오면(리마운트) 초기화되어
+  // 방금 만든 카드가 사라지는 것처럼 보이는 문제가 있었음. 서버 응답(GET /messages)에
+  // 이미 각 메시지의 understandingCard가 포함되어 있으므로(API.md 8.3절), 메시지 목록을
+  // 다시 불러올 때마다 실제로 카드가 있는 가장 최근 메시지를 찾아서 activeCardId를
+  // 맞춰준다 - 화면이 아니라 실제 데이터를 기준으로 삼는다.
+  useEffect(() => {
+    const messages = messagesQuery.data?.messages ?? [];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const card = messages[i].understandingCard;
+      if (card && "id" in card) {
+        setActiveCardId(card.id);
+        return;
+      }
+    }
+  }, [messagesQuery.data]);
 
   const handleRequestAIReview = async (content: string) => {
     setDraftContent(content);
@@ -83,21 +125,19 @@ export function ConversationPage() {
     queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
   };
 
-  const handleReviewSent = async () => {
-    if (!activeReview || !conversationId) return;
+  const handleReviewSent = async (message: MessageResponse) => {
+    if (!conversationId) return;
 
-    // 확정 전송: 발신자 원문 메시지를 대화에 남긴다 (시안: 민트 말풍선 + 카드).
-    // 실서버(10.4)는 /send가 메시지+카드를 함께 생성하므로, 연동 시엔 이 수동 추가를 제거.
-    await conversationService.addResponseMessage(conversationId, draftContent, {
-      id: ME.id,
-      displayName: ME.name,
-      timeZoneId: ME.tz,
-    });
+    // 실서버(10.5절)는 /send가 메시지+카드를 한 트랜잭션으로 만들어서 응답에 포함시킴.
+    // 예전엔 여기서 가짜 messageId로 별도 카드 생성을 시도했는데, 실서버엔 그런 메시지가
+    // 존재하지 않아서 404가 났고 그 여파로 패널까지 같이 사라지는 버그가 있었음.
+    // 이제는 서버가 이미 만들어준 카드를 응답에서 그대로 꺼내 쓴다.
     queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
 
-    // 확정 전송되면 이해카드가 생성됨 (10.4절) - 데모에서는 mock으로 별도 생성
-    const card = await createCard.mutateAsync(`local-message-${Date.now()}`);
-    setActiveCardId(card.id);
+    const card = message.understandingCard;
+    if (card && "id" in card) {
+      setActiveCardId(card.id);
+    }
     setActiveReview(null);
     setInputClearSignal((n) => n + 1); // 입력창 비우기
   };
@@ -158,15 +198,18 @@ export function ConversationPage() {
             <MessageBubble key={m.id} message={m} isMine={m.sender.id === viewerId} />
           ))}
 
-          {/* 카드는 발신자(이서연)가 만든 것 → 발신자 시점=오른쪽, 수신자 시점=왼쪽 (말풍선과 동일 정렬) */}
+          {/* 카드 위치: 발신자로 보는 사람=오른쪽, 수신자로 보는 사람=왼쪽 (말풍선과 동일 정렬).
+              전엔 viewingAsMe(데모토글 전용, 실서버에선 항상 true로 고정)를 그대로 써서
+              실서버에선 항상 오른쪽에만 붙는 버그가 있었음. 위에서 이미 mock/실서버 모두
+              올바르게 계산해둔 cardViewerRole을 그대로 재사용한다. */}
           {supersededCards.map((c) => (
-            <div key={`sup-${c.id}-${c.revision}`} className={`flex ${viewingAsMe ? "justify-end" : "justify-start"}`}>
+            <div key={`sup-${c.id}-${c.revision}`} className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}>
               <UnderstandingCard card={c} viewerRole={cardViewerRole} superseded />
             </div>
           ))}
 
           {cardQuery.data && (
-            <div className={`flex ${viewingAsMe ? "justify-end" : "justify-start"}`}>
+            <div className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}>
               <UnderstandingCard
                 card={cardQuery.data}
                 viewerRole={cardViewerRole}
