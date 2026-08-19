@@ -4,7 +4,7 @@ import type {
   CreateAiReviewRequest,
   ConfirmAiReviewRequest,
   SendAiReviewRequest,
-  AnswerAiReviewRequest,
+  AnswerAmbiguityRequest,
 } from "@/types/aiReview";
 import type { MessageResponse } from "@/types/conversation";
 
@@ -19,8 +19,8 @@ export const aiReviewApi = {
   getReview: (reviewId: string) =>
     apiClient.get<AiReview>(`/ai-reviews/${reviewId}`).then((res) => res.data),
 
-  // 모호성 질문(agentSession.INTERRUPT)에 답하고 세션 재개 (API.md 10.3)
-  answerReview: (reviewId: string, req: AnswerAiReviewRequest) =>
+  // AI 모호성 질문에 답변, agentSession.status가 INTERRUPT인 동안 반복 호출 (API.md 10.3절)
+  answerAmbiguity: (reviewId: string, req: AnswerAmbiguityRequest) =>
     apiClient.post<AiReview>(`/ai-reviews/${reviewId}/answers`, req).then((res) => res.data),
 
   confirmReview: (reviewId: string, req: ConfirmAiReviewRequest) =>
