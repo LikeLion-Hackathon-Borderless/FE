@@ -48,9 +48,10 @@ function getConversationSummary(): ConversationSummary {
 }
 
 export const conversationMock = {
-  listConversations: (): Promise<ConversationSummary[]> => mockDelay([getConversationSummary()], 300),
+  listConversations: (_workspaceId: string): Promise<ConversationSummary[]> =>
+    mockDelay([getConversationSummary()], 300),
 
-  createDirectConversation: (_otherUserId: string) =>
+  createDirectConversation: (_workspaceId: string, _otherUserId: string) =>
     mockDelay({ id: DEMO_CONVERSATION_ID }, 300),
 
   getMessages: (conversationId: string, _before?: string): Promise<MessageListResponse> => {
