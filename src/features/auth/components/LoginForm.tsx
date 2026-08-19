@@ -4,8 +4,6 @@ import { authService } from "../api/auth";
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
 import type { ApiErrorResponse } from "@/shared/api/errorCodes";
 import { USE_MOCK } from "@/shared/api/client";
-import { useAutoAcceptPendingInvite } from "@/shared/hooks/useAutoAcceptPendingInvite";
-import { usePostLoginWorkspaceResolve } from "@/shared/hooks/usePostLoginWorkspaceResolve";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -14,18 +12,15 @@ export function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
-  const tryAutoAcceptInvite = useAutoAcceptPendingInvite();
-  const resolveWorkspaceAndEnter = usePostLoginWorkspaceResolve();
 
-  const routeByOnboardingStep = async (step: string) => {
+  const routeByOnboardingStep = (step: string) => {
     // onboardingStep 기준으로 이어서 진행 (API.md 5절)
     if (step === "PROFILE" || step === "WORK_CONTEXT") {
       navigate("/onboarding");
     } else if (step === "WORKSPACE") {
       navigate("/workspaces");
     } else {
-      // COMPLETED - 로컬에 workspaceId가 없으면(다른 브라우저 등) 여기서 채워줌
-      await resolveWorkspaceAndEnter();
+      navigate("/");
     }
   };
 
@@ -36,9 +31,7 @@ export function LoginForm() {
     try {
       const res = await authService.login(email, password);
       setAuth(res.accessToken, res.user);
-      // 초대 링크로 들어왔다가 로그인한 경우, 대기 중인 초대를 먼저 자동 수락 (API.md 7.7절)
-      const accepted = await tryAutoAcceptInvite();
-      if (!accepted) await routeByOnboardingStep(res.user.onboardingStep);
+      routeByOnboardingStep(res.user.onboardingStep);
     } catch (err) {
       const apiError = err as ApiErrorResponse;
       // INVALID_CREDENTIALS(401)만 정의되어 있음 (API.md 4.4절)
@@ -55,8 +48,7 @@ export function LoginForm() {
     try {
       const res = await authService.login("demo@ditto.app", "demo");
       setAuth(res.accessToken, res.user);
-      const accepted = await tryAutoAcceptInvite();
-      if (!accepted) await routeByOnboardingStep(res.user.onboardingStep);
+      routeByOnboardingStep(res.user.onboardingStep);
     } finally {
       setIsSubmitting(false);
     }

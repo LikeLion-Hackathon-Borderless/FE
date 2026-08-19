@@ -4,7 +4,6 @@ import { useConversationList } from "@/features/conversation/hooks/useConversati
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
 import { useWorkspaceStore } from "@/shared/hooks/useWorkspaceStore";
 import { useHydrateAuth } from "@/shared/hooks/useHydrateAuth";
-import { InviteMembersModal } from "@/features/workspace/components/InviteMembersModal";
 import { DittoLogo } from "./DittoLogo";
 
 // 앱 셸: 상단(Ditto 로고 + 대화/합의기록 탭) + 좌측 사이드바 + 본문(Outlet)
@@ -24,9 +23,7 @@ export function AppShell() {
   const user = useAuthStore((s) => s.user);
   const clearAuth = useAuthStore((s) => s.clear);
   const clearWorkspace = useWorkspaceStore((s) => s.clearWorkspaceId);
-  const workspaceId = useWorkspaceStore((s) => s.workspaceId);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
   // 합의기록 경로만 그쪽 탭, 나머지(대화목록·대화상세)는 "대화" 탭 활성
   const onAgreementLog = pathname.startsWith("/agreement-log");
 
@@ -81,17 +78,7 @@ export function AppShell() {
         >
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 flex-shrink-0 rounded-full bg-gray-200" />
-            <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
-              Likelion Global
-            </span>
-            {workspaceId && (
-              <button
-                onClick={() => setInviteModalOpen(true)}
-                className="flex-shrink-0 rounded px-1.5 py-1 text-xs text-primary-600 hover:bg-primary-50"
-              >
-                초대
-              </button>
-            )}
+            <span className="truncate text-sm font-medium text-gray-900">Likelion Global</span>
           </div>
 
           <Section title="채널">
@@ -134,10 +121,6 @@ export function AppShell() {
           로그아웃
         </button>
       </div>
-
-      {inviteModalOpen && workspaceId && (
-        <InviteMembersModal workspaceId={workspaceId} onClose={() => setInviteModalOpen(false)} />
-      )}
     </div>
   );
 }

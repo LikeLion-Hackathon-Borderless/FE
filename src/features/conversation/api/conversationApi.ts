@@ -8,15 +8,13 @@ import type {
 
 // 실제 서버 호출. mock 모드에서는 conversation.ts 스위처가 conversationMock을 대신 씀
 export const conversationApi = {
-  // workspaceId로 스코프 지정 (API.md 3.4절 확장 - GET /conversations?workspaceId=)
-  listConversations: (workspaceId: string) =>
-    apiClient
-      .get<ConversationSummary[]>("/conversations", { params: { workspaceId } })
-      .then((res) => res.data),
+  // 현재는 workspaceId 없이 호출, 워크스페이스 API 배포되면 쿼리 추가 (API.md 8.2절)
+  listConversations: () =>
+    apiClient.get<ConversationSummary[]>("/conversations").then((res) => res.data),
 
-  createDirectConversation: (workspaceId: string, otherUserId: string) =>
+  createDirectConversation: (otherUserId: string) =>
     apiClient
-      .post<{ id: string }>("/conversations/direct", { workspaceId, otherUserId })
+      .post<{ id: string }>("/conversations/direct", { otherUserId })
       .then((res) => res.data),
 
   getMessages: (conversationId: string, before?: string) =>

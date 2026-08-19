@@ -3,7 +3,6 @@ import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { SignupPage } from "@/features/auth/pages/SignupPage";
 import { OnboardingPage } from "@/features/onboarding/pages/OnboardingPage";
 import { WorkspaceHubPage } from "@/features/workspace/pages/WorkspaceHubPage";
-import { InvitationPreviewPage } from "@/features/workspace/pages/InvitationPreviewPage";
 import { ConversationListPage } from "@/features/conversation/pages/ConversationListPage";
 import { ConversationPage } from "@/features/conversation/pages/ConversationPage";
 import { AgreementLogPage } from "@/features/agreement-log/pages/AgreementLogPage";
@@ -14,8 +13,6 @@ const router = createBrowserRouter([
   // 셸 밖 (인증/온보딩)
   { path: "/login", element: <LoginPage /> },
   { path: "/signup", element: <SignupPage /> },
-  // 초대 미리보기: 인증 불필요 (API.md 7.7절 - 로그인 안 해도 미리보기 가능해야 함)
-  { path: "/invitations/:token", element: <InvitationPreviewPage /> },
   {
     path: "/onboarding",
     element: (
