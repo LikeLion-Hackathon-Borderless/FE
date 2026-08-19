@@ -1,10 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
+import { useHydrateAuth } from "@/shared/hooks/useHydrateAuth";
 import { ProfileStep } from "../components/ProfileStep";
 import { WorkContextStep } from "../components/WorkContextStep";
 import { WorkspaceStep } from "../components/WorkspaceStep";
 
 export function OnboardingPage() {
+  // 새로고침 시 토큰은 남아있는데 user(onboardingStep 포함)가 비어있는 문제 방지
+  useHydrateAuth();
+
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
 
@@ -17,7 +21,7 @@ export function OnboardingPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-sm">
         {step === "PROFILE" && <ProfileStep onDone={goToNextStep} />}
         {step === "WORK_CONTEXT" && <WorkContextStep onDone={goToNextStep} />}

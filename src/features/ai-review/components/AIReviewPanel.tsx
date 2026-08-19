@@ -227,23 +227,32 @@ export function AIReviewPanel({
 
 function PanelShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <aside className="flex w-panel flex-shrink-0 flex-col border-l border-gray-100 bg-surface">
-      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="rounded-lg bg-primary-100 px-2 py-1.5 text-xs font-medium text-[#148280]">
-            AI 검토
-          </span>
-          <span className="text-base font-medium tracking-[-0.32px] text-[#171717]">공동 이해 준비</span>
+    <>
+      {/* md 미만: 패널 뒤 어두운 배경 (전체화면 오버레이처럼 동작) */}
+      <div onClick={onClose} className="fixed inset-0 z-20 bg-black/30 md:hidden" aria-hidden="true" />
+
+      {/* md 미만: 화면 전체 폭을 채우는 하단/전체 오버레이. md 이상: 기존처럼 우측 고정폭 패널 */}
+      <aside
+        className="fixed inset-x-0 bottom-0 top-16 z-30 flex flex-col border-l border-gray-100 bg-surface
+          md:static md:inset-auto md:w-panel md:flex-shrink-0"
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="rounded-lg bg-primary-100 px-2 py-1.5 text-xs font-medium text-[#148280]">
+              AI 검토
+            </span>
+            <span className="text-base font-medium tracking-[-0.32px] text-[#171717]">공동 이해 준비</span>
+          </div>
+          <button onClick={onClose} aria-label="닫기" className="text-gray-400 hover:opacity-70">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M19.0001 1L1 19.0001" stroke="#9299A3" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M1 1L19.0001 19.0001" stroke="#9299A3" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
-        <button onClick={onClose} aria-label="닫기" className="text-gray-400 hover:opacity-70">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M19.0001 1L1 19.0001" stroke="#9299A3" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M1 1L19.0001 19.0001" stroke="#9299A3" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-4">{children}</div>
-    </aside>
+        <div className="flex-1 overflow-y-auto p-4">{children}</div>
+      </aside>
+    </>
   );
 }
 

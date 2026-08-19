@@ -2,6 +2,14 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
+    screens: {
+      xs: "420px", // 초소형 폰에서 배지 등 일부 요소 숨김 처리용 (기본 tailwind엔 없어서 추가)
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     extend: {
       colors: {
         // Ditto 시안 민트 계열 (primary-500 = 시안에서 확인한 #32DDDB)

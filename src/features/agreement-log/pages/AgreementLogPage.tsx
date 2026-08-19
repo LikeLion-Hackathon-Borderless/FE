@@ -21,7 +21,7 @@ export function AgreementLogPage() {
   const lastIndex = logs.length - 1; // 최신 이벤트 강조 (API는 과거→현재 순, API.md 2.4)
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h1 className="mb-4 text-lg font-medium text-gray-900">합의 기록</h1>
 
       {logsQuery.isLoading ? (
@@ -37,7 +37,8 @@ export function AgreementLogPage() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-[140px_1fr_120px] border-b border-gray-100 pb-2 text-xs text-gray-400">
+          {/* 헤더 라벨: 좁은 화면(카드형으로 쌓이는 md 미만)에서는 각 행 안에 라벨이 이미 붙으므로 숨김 */}
+          <div className="hidden border-b border-gray-100 pb-2 text-xs text-gray-400 md:grid md:grid-cols-[140px_1fr_120px]">
             <span>언제</span>
             <span>무엇에</span>
             <span>누가</span>
@@ -73,11 +74,16 @@ function LogRow({ log, highlight }: { log: AgreementLogEntry; highlight: boolean
 
   return (
     <div
-      className={`grid grid-cols-[140px_1fr_120px] items-start border-b border-gray-50 py-3 text-sm ${
+      className={`flex flex-col gap-1 border-b border-gray-50 px-3 py-3 text-sm
+        md:grid md:grid-cols-[140px_1fr_120px] md:items-start md:gap-0 md:px-0 ${
         highlight ? "bg-primary-50" : ""
       }`}
     >
-      <span className="text-gray-500">{when}</span>
+      {/* md 미만: 라벨을 행 안에 같이 표시(헤더를 숨겼으므로) */}
+      <span className="text-gray-500">
+        <span className="mr-1 text-gray-300 md:hidden">언제</span>
+        {when}
+      </span>
       <div className="text-gray-800">
         {statusLabel} · 공통 이해 카드 v{log.revision} (마감 {deadline})
         {log.fileReferences.length > 0 && (
@@ -86,7 +92,10 @@ function LogRow({ log, highlight }: { log: AgreementLogEntry; highlight: boolean
           </div>
         )}
       </div>
-      <span className={highlight ? "text-primary-600" : "text-gray-500"}>{who}</span>
+      <span className={highlight ? "text-primary-600" : "text-gray-500"}>
+        <span className="mr-1 text-gray-300 md:hidden">누가</span>
+        {who}
+      </span>
     </div>
   );
 }

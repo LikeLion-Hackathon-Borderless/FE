@@ -123,29 +123,29 @@ export function ConversationPage() {
   return (
     <div className="flex h-full">
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex flex-shrink-0 items-center gap-2 border-b border-gray-100 bg-primary-50 px-4 py-3">
-          <div className="h-6 w-6 rounded-full bg-gray-200" />
-          <span className="text-sm font-medium text-gray-900">{partner.name}</span>
-          <span className="rounded bg-primary-100 px-1.5 py-0.5 text-xs font-medium text-primary-600">
+        <header className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-gray-100 bg-primary-50 px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="h-6 w-6 flex-shrink-0 rounded-full bg-gray-200" />
+          <span className="truncate text-sm font-medium text-gray-900">{partner.name}</span>
+          <span className="flex-shrink-0 whitespace-nowrap rounded bg-primary-100 px-1.5 py-0.5 text-xs font-medium text-primary-600">
             {zoneShort(partner.tz)} {dayjs().tz(partner.tz).format("HH:mm")}
           </span>
-          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
+          <span className="hidden flex-shrink-0 whitespace-nowrap rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 xs:inline-block">
             {partnerOffHours ? "근무 외 시간" : "근무 시간"}
           </span>
 
           {/* 데모 전용: 시점 전환. USE_MOCK일 때만 노출 → 실배포(USE_MOCK=false)면 자동 숨김.
-              배포 시 viewerId는 로그인 유저로 고정되어 본인 시점만 보인다. */}
+              좁은 화면에서는 줄바꿈되어 다음 줄 전체 폭을 차지하게 함(md 이상은 원래대로 오른쪽 정렬). */}
           {USE_MOCK && (
-            <div className="ml-auto flex items-center gap-1 rounded-md bg-white p-0.5 text-xs">
+            <div className="order-last flex w-full items-center gap-1 rounded-md bg-white p-0.5 text-xs sm:order-none sm:ml-auto sm:w-auto">
               <button
                 onClick={() => setViewerId(ME.id)}
-                className={`rounded px-2 py-1 ${viewingAsMe ? "bg-primary-500 text-white" : "text-gray-500"}`}
+                className={`flex-1 rounded px-2 py-1 sm:flex-none ${viewingAsMe ? "bg-primary-500 text-white" : "text-gray-500"}`}
               >
                 {ME.name} 시점
               </button>
               <button
                 onClick={() => setViewerId(ALEX.id)}
-                className={`rounded px-2 py-1 ${!viewingAsMe ? "bg-primary-500 text-white" : "text-gray-500"}`}
+                className={`flex-1 rounded px-2 py-1 sm:flex-none ${!viewingAsMe ? "bg-primary-500 text-white" : "text-gray-500"}`}
               >
                 {ALEX.name} 시점
               </button>
