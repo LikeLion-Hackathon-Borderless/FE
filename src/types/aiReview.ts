@@ -27,6 +27,25 @@ export interface AiReviewWarning {
   suggestedDeadline?: string;
 }
 
+// AI 에이전트 세션 (실서버 agentSession) - 애매한 표현이 있으면 INTERRUPT로 질문을 던진다
+export type AgentSessionStatus = "INTERRUPT" | "DONE" | "FAILED";
+
+export interface AmbiguityItem {
+  span: string; // 애매한 원문 조각 (예: "조금 더 고민해 보면?")
+  category: string;
+  reason: string;
+  candidates: string[]; // 사용자가 고를 후보들
+  suggestion: string; // 안내 문구
+}
+
+export interface AgentSession {
+  threadId: string;
+  status: AgentSessionStatus;
+  step?: number | null;
+  total?: number | null;
+  item?: AmbiguityItem | null;
+}
+
 export interface AiReview {
   id: string;
   conversationId: string;
@@ -43,8 +62,13 @@ export interface AiReview {
   };
   evidence: Evidence[];
   warnings: AiReviewWarning[];
+  agentSession?: AgentSession | null; // 없거나 null이면 애매함 없음
   createdAt: string;
   expiresAt: string;
+}
+
+export interface AnswerAiReviewRequest {
+  answer: string;
 }
 
 export interface CreateAiReviewRequest {

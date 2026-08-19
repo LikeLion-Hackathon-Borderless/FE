@@ -22,7 +22,7 @@ interface Props {
 }
 
 function toWall(instant: string, zone: string): string {
-  if (!instant) return "";
+  if (!instant || !dayjs(instant).isValid()) return "";
   return dayjs(instant).tz(zone).format("YYYY-MM-DDTHH:mm");
 }
 

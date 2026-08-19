@@ -4,6 +4,7 @@ import type {
   CreateAiReviewRequest,
   ConfirmAiReviewRequest,
   SendAiReviewRequest,
+  AnswerAiReviewRequest,
 } from "@/types/aiReview";
 import type { MessageResponse } from "@/types/conversation";
 
@@ -17,6 +18,10 @@ export const aiReviewApi = {
 
   getReview: (reviewId: string) =>
     apiClient.get<AiReview>(`/ai-reviews/${reviewId}`).then((res) => res.data),
+
+  // 모호성 질문(agentSession.INTERRUPT)에 답하고 세션 재개 (API.md 10.3)
+  answerReview: (reviewId: string, req: AnswerAiReviewRequest) =>
+    apiClient.post<AiReview>(`/ai-reviews/${reviewId}/answers`, req).then((res) => res.data),
 
   confirmReview: (reviewId: string, req: ConfirmAiReviewRequest) =>
     apiClient.patch<AiReview>(`/ai-reviews/${reviewId}`, req).then((res) => res.data),

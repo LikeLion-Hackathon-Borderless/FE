@@ -65,6 +65,24 @@ export const aiReviewMock = {
     return mockDelay(review, 200);
   },
 
+  // 모호성 답변 → mock은 답을 expectedOutcome에 반영하고 세션 DONE 처리
+  answerReview: (reviewId: string, req: { answer: string }): Promise<AiReview> => {
+    const review = reviewStore.get(reviewId);
+    if (!review) return Promise.reject({ code: "AI_REVIEW_NOT_FOUND", status: 404 });
+    const updated: AiReview = {
+      ...review,
+      structuredFields: {
+        ...review.structuredFields,
+        expectedOutcome: { ...review.structuredFields.expectedOutcome, value: req.answer },
+      },
+      agentSession: review.agentSession
+        ? { ...review.agentSession, status: "DONE", item: null }
+        : null,
+    };
+    reviewStore.set(reviewId, updated);
+    return mockDelay(updated, 300);
+  },
+
   confirmReview: (reviewId: string, req: ConfirmAiReviewRequest): Promise<AiReview> => {
     const review = reviewStore.get(reviewId);
     if (!review) return Promise.reject({ code: "AI_REVIEW_NOT_FOUND", status: 404 });
