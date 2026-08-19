@@ -10,7 +10,16 @@ const OPTIONS: Array<{ type: CardResponseType; label: string }> = [
   { type: "REQUEST_CLARIFICATION", label: "요청 결과가 불명확합니다." },
 ];
 
-export function ResponseButtonGroup({ card }: { card: UnderstandingCard }) {
+const AGREE_MESSAGE = "이해한 내용이 맞습니다. 지금 바로 착수할게요.";
+
+// 응답이 확정되면 대화에 남길 말풍선 텍스트를 부모(ConversationPage)로 올려보냄
+export function ResponseButtonGroup({
+  card,
+  onResponded,
+}: {
+  card: UnderstandingCard;
+  onResponded?: (bubbleText: string) => void;
+}) {
   const [selected, setSelected] = useState<CardResponseType | null>(null);
   const respond = useRespondToCard(card.id);
 
@@ -19,7 +28,10 @@ export function ResponseButtonGroup({ card }: { card: UnderstandingCard }) {
 
   const handleAgree = () => {
     setSelected("AGREE");
-    respond.mutate({ type: "AGREE", comment: null });
+    respond.mutate(
+      { type: "AGREE", comment: null },
+      { onSuccess: () => onResponded?.(AGREE_MESSAGE) },
+    );
   };
 
   return (
@@ -42,9 +54,17 @@ export function ResponseButtonGroup({ card }: { card: UnderstandingCard }) {
       </div>
 
       {selected === "REQUEST_DEADLINE_CHANGE" && (
-        <DeadlineProposalForm cardId={card.id} currentDeadline={card.deadline.instant} />
+        <DeadlineProposalForm
+          cardId={card.id}
+          currentDeadline={card.deadline.instant}
+          recipientZone={card.deadline.viewerTimeZoneId}
+          recipientName={card.assignee.displayName}
+          onSubmitted={(text) => onResponded?.(text)}
+        />
       )}
-      {selected === "REQUEST_CLARIFICATION" && <ClarificationForm cardId={card.id} />}
+      {selected === "REQUEST_CLARIFICATION" && (
+        <ClarificationForm cardId={card.id} onSubmitted={(text) => onResponded?.(text)} />
+      )}
     </div>
   );
 }

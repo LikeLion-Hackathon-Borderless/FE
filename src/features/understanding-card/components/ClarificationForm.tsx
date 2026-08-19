@@ -1,17 +1,26 @@
 import { useState } from "react";
 import { useRespondToCard } from "../hooks/useCardState";
 
-export function ClarificationForm({ cardId }: { cardId: string }) {
+export function ClarificationForm({
+  cardId,
+  onSubmitted,
+}: {
+  cardId: string;
+  onSubmitted?: (bubbleText: string) => void;
+}) {
   const [comment, setComment] = useState("");
   const respond = useRespondToCard(cardId);
 
   const handleSubmit = () => {
     if (!comment.trim()) return;
-    respond.mutate({ type: "REQUEST_CLARIFICATION", comment });
+    respond.mutate(
+      { type: "REQUEST_CLARIFICATION", comment },
+      { onSuccess: () => onSubmitted?.(comment) },
+    );
   };
 
   return (
-    <div className="rounded border border-gray-200 bg-gray-50 p-3">
+    <div className="rounded border border-gray-200 bg-block-gray p-3">
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}

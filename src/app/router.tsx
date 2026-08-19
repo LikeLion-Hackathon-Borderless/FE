@@ -7,8 +7,10 @@ import { ConversationListPage } from "@/features/conversation/pages/Conversation
 import { ConversationPage } from "@/features/conversation/pages/ConversationPage";
 import { AgreementLogPage } from "@/features/agreement-log/pages/AgreementLogPage";
 import { RequireAuth } from "@/shared/ui/RequireAuth";
+import { AppShell } from "@/shared/ui/AppShell";
 
 const router = createBrowserRouter([
+  // 셸 밖 (인증/온보딩)
   { path: "/login", element: <LoginPage /> },
   { path: "/signup", element: <SignupPage /> },
   {
@@ -27,29 +29,18 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
   },
+  // 셸 안 (대화/합의기록) - AppShell이 사이드바+탭 제공, 각 페이지는 Outlet에 렌더
   {
-    path: "/",
     element: (
       <RequireAuth>
-        <ConversationListPage />
+        <AppShell />
       </RequireAuth>
     ),
-  },
-  {
-    path: "/conversations/:conversationId",
-    element: (
-      <RequireAuth>
-        <ConversationPage />
-      </RequireAuth>
-    ),
-  },
-  {
-    path: "/agreement-log",
-    element: (
-      <RequireAuth>
-        <AgreementLogPage />
-      </RequireAuth>
-    ),
+    children: [
+      { path: "/", element: <ConversationListPage /> },
+      { path: "/conversations/:conversationId", element: <ConversationPage /> },
+      { path: "/agreement-log", element: <AgreementLogPage /> },
+    ],
   },
 ]);
 
