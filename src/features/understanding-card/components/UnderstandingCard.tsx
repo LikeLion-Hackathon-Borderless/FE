@@ -6,6 +6,7 @@ import type { UnderstandingCard as UnderstandingCardType } from "@/types/underst
 import { CardVersionBadge } from "./CardVersionBadge";
 import { ResponseButtonGroup } from "./ResponseButtonGroup";
 import { SenderRevisionActions } from "./SenderRevisionActions";
+import { zoneShort } from "@/shared/utils/timezoneLabel";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -20,12 +21,6 @@ interface Props {
   onRevised?: (supersededCard: UnderstandingCardType) => void;
   // 이전 버전(대체됨) 접힘 표시
   superseded?: boolean;
-}
-
-function zoneShort(zone: string): string {
-  if (zone === "America/Los_Angeles") return "LA";
-  if (zone === "Asia/Seoul") return "Seoul";
-  return zone.split("/").pop() ?? zone;
 }
 
 // 첨부 데이터 모델은 첨부 배치(29)에서 확정 - 지금은 fileName류 필드가 있으면 방어적으로 표시

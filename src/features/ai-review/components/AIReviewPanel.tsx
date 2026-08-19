@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import type { AiReview } from "@/types/aiReview";
 import { DateTimePicker } from "@/shared/ui/DateTimePicker";
 import { ErrorCode } from "@/shared/api/errorCodes";
+import { zoneShort } from "@/shared/utils/timezoneLabel";
 import { useConfirmAIReview, useSendAIReview } from "../hooks/useAIReview";
 
 interface Props {
@@ -19,12 +20,6 @@ interface Props {
 
 function parseZone(annotated?: string): string | null {
   return annotated?.match(/\[(.+)\]$/)?.[1] ?? null;
-}
-
-function zoneShort(zone: string): string {
-  if (zone === "America/Los_Angeles") return "LA";
-  if (zone === "Asia/Seoul") return "Seoul";
-  return zone.split("/").pop() ?? zone;
 }
 
 // C-4 의미 모호성 "조금 더 고민해보면?" 두 갈래 (기획안 3-1 step5)

@@ -13,18 +13,13 @@ import { useMessages, useConversationList } from "../hooks/useConversations";
 import { conversationService } from "../api/conversation";
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
 import { isWithinWorkHours } from "@/shared/utils/workHours";
+import { zoneShort } from "@/shared/utils/timezoneLabel";
 import { USE_MOCK } from "@/shared/api/client";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AiReview } from "@/types/aiReview";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-
-function zoneShort(zone: string): string {
-  if (zone === "America/Los_Angeles") return "LA";
-  if (zone === "Asia/Seoul") return "Seoul";
-  return zone.split("/").pop() ?? zone;
-}
 
 export function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
