@@ -62,7 +62,7 @@ export function AIReviewPanel({
   const recipientZone =
     recipientTimeZoneId ?? parseZone(sf.deadline.recipientLocal) ?? "America/Los_Angeles";
   const recipientLabel = recipientName ?? sf.assigneeUserId.value ?? "수신자";
-  const senderLabel = senderName ?? "이서연";
+  const senderLabel = senderName ?? "발신자";
 
   // C-3: AI 후보를 넣어두되 "자동 확정 금지" — 명시 확정해야 전송 가능.
   const aiCandidate = sf.deadline.value ?? "";

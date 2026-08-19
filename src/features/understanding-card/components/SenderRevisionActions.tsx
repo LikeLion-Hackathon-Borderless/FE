@@ -5,12 +5,14 @@ import timezone from "dayjs/plugin/timezone";
 import type { UnderstandingCard } from "@/types/understandingCard";
 import { DateTimePicker } from "@/shared/ui/DateTimePicker";
 import { useSubmitCardRevision } from "../hooks/useCardState";
+import { useAuthStore } from "@/shared/hooks/useAuthStore";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 // 카드 PENDING(수신자가 기한조정/설명요청) 상태에서 발신자가 카드를 다시 만드는 액션 (Image 7/8).
 // 지금은 뷰어 구분이 없어 state 기준으로 노출 - B-5 붙으면 발신자 뷰에서만 보이게 정리.
+// 발신자 = 로그인 유저
 export function SenderRevisionActions({
   card,
   senderZone = "Asia/Seoul",
@@ -96,7 +98,7 @@ export function SenderRevisionActions({
             value={counterInstant}
             onChange={setCounterInstant}
             editZone={senderZone}
-            editLabel="이서연"
+            editLabel={useAuthStore.getState().user?.displayName ?? "발신자"}
             previewZone={recipientZone}
             previewLabel={card.assignee.displayName}
           />

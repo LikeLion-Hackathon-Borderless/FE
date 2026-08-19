@@ -45,7 +45,7 @@ export function DeadlineProposalForm({
         editZone={recipientZone}
         editLabel={recipientName}
         previewZone={senderZone}
-        previewLabel="이서연"
+        previewLabel="발신자"
       />
       <button
         onClick={handleSubmit}
