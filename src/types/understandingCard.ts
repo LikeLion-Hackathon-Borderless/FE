@@ -21,11 +21,9 @@ export interface UnderstandingCard {
   attachments: unknown[];
   evidence: unknown[];
   latestResponse: CardResponse | null;
+  needsClarification: boolean; // 백엔드 실제 필드 (decisionType 대체)
   createdAt: string;
   updatedAt: string;
-  // TODO: 와이어프레임의 "결정 상태 (필수 반영 · 제안 아님)" 필드가 API.md에 없음.
-  // 백엔드 확인 필요 - 추가되기 전까지 프론트에서 optional로 두고 없으면 뱃지 숨김.
-  decisionType?: "REQUIRED" | "SUGGESTION" | null;
 }
 
 export type CardResponseType = "AGREE" | "REQUEST_DEADLINE_CHANGE" | "REQUEST_CLARIFICATION";
@@ -37,9 +35,12 @@ export interface CardResponseRequest {
 }
 
 export interface CardResponse {
+  id?: string;
+  revision?: number;
   type: CardResponseType;
   comment: string | null;
-  proposedDeadline?: string;
+  proposedDeadline?: string | null;
+  responderId?: string;
   respondedAt?: string;
 }
 

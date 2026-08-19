@@ -71,13 +71,9 @@ export function UnderstandingCard({ card, viewerRole, onResponded, onRevised, su
         <Row label="담당자" value={card.assignee.displayName} />
         <Row label="기한" value={deadlineText} emphasize />
         <Row label="기대 결과" value={card.expectedOutcome} />
-        {/* TODO: decisionType 필드 백엔드 확인 전까지 옵셔널 처리 (types/understandingCard.ts 참고) */}
-        {card.decisionType && (
-          <Row
-            label="결정 상태"
-            value={card.decisionType === "REQUIRED" ? "필수 반영 · 제안 아님" : "제안"}
-          />
-        )}
+        {/* 백엔드엔 decisionType이 없고 needsClarification(boolean)만 있음.
+            와이어프레임의 "결정 상태" 행은 대응 필드가 없어 제거 - 확인 필요 시에만 표시. (PM 확인 항목) */}
+        {card.needsClarification && <Row label="상태" value="확인 필요" />}
 
         {/* 첨부 + 원문 보기 (Image 2/5) */}
         <div className="flex justify-between gap-4">
