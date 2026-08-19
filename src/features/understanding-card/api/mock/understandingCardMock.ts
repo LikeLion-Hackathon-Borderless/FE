@@ -29,7 +29,7 @@ function makeInitialCard(messageId: string): UnderstandingCard {
     latestResponse: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    decisionType: "REQUIRED", // TODO: API.md에 필드 없음 - 백엔드 확인 전까지 프론트 임시값
+    needsClarification: false,
   };
 }
 
