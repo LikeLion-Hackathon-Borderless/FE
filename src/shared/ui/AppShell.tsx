@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useConversationList } from "@/features/conversation/hooks/useConversations";
+import { useWorkspaceDetail } from "@/features/workspace/hooks/useWorkspace";
 import { useAuthStore } from "@/shared/hooks/useAuthStore";
 import { useWorkspaceStore } from "@/shared/hooks/useWorkspaceStore";
 import { useHydrateAuth } from "@/shared/hooks/useHydrateAuth";
@@ -8,7 +9,8 @@ import { InviteMembersModal } from "@/features/workspace/components/InviteMember
 import { DittoLogo } from "./DittoLogo";
 
 // 앱 셸: 상단(Ditto 로고 + 대화/합의기록 탭) + 좌측 사이드바 + 본문(Outlet)
-// 인증/온보딩 화면은 셸 밖. 채널·워크스페이스명은 데모용 정적값(실배포는 워크스페이스 API에서).
+// 인증/온보딩 화면은 셸 밖. 워크스페이스명은 GET /workspaces/{id}(useWorkspaceDetail)로 실시간 조회.
+// 채널/그룹채팅은 MVP 범위에서 제외됨(API.md 1.1절) - 사이드바에 채널 섹션 없음.
 //
 // 반응형 전략: md(768px) 이상은 사이드바가 항상 보이는 기존 레이아웃 그대로.
 // md 미만(태블릿 세로/폰)에서는 사이드바를 화면 밖으로 숨기고, 상단 햄버거 버튼으로
@@ -25,6 +27,7 @@ export function AppShell() {
   const clearAuth = useAuthStore((s) => s.clear);
   const clearWorkspace = useWorkspaceStore((s) => s.clearWorkspaceId);
   const workspaceId = useWorkspaceStore((s) => s.workspaceId);
+  const workspaceDetail = useWorkspaceDetail(workspaceId);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   // 합의기록 경로만 그쪽 탭, 나머지(대화목록·대화상세)는 "대화" 탭 활성
@@ -82,7 +85,7 @@ export function AppShell() {
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 flex-shrink-0 rounded-full bg-gray-200" />
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
-              Likelion Global
+              {workspaceDetail.data?.name ?? "워크스페이스"}
             </span>
             {workspaceId && (
               <button
@@ -93,11 +96,6 @@ export function AppShell() {
               </button>
             )}
           </div>
-
-          <Section title="채널">
-            <SidebarItem>#project-orbit</SidebarItem>
-            <SidebarItem>#design-review</SidebarItem>
-          </Section>
 
           <Section title="다이렉트 메시지">
             {dms.map((c) => (
@@ -164,8 +162,4 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <div className="flex flex-col">{children}</div>
     </div>
   );
-}
-
-function SidebarItem({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-md px-2 py-1.5 text-sm text-gray-600">{children}</div>;
 }
