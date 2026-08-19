@@ -1,6 +1,7 @@
 import { useState } from "react";
 import dayjs from "dayjs";
 import type { AiReview } from "@/types/aiReview";
+import type { MessageResponse } from "@/types/conversation";
 import { DateTimePicker } from "@/shared/ui/DateTimePicker";
 import { ErrorCode } from "@/shared/api/errorCodes";
 import { zoneShort } from "@/shared/utils/timezoneLabel";
@@ -10,7 +11,9 @@ interface Props {
   review: AiReview;
   originalContent: string;
   onClose: () => void;
-  onSent: () => void;
+  // 실서버는 /send가 메시지+카드를 한 트랜잭션으로 만들어서 응답에 포함시킴(API.md 10.5절).
+  // 부모(ConversationPage)가 그 카드를 바로 쓸 수 있게 응답 전체를 넘겨준다.
+  onSent: (message: MessageResponse) => void;
   // optional 확장 (기존 호출부 그대로 동작). 없으면 deadline의 [Zone] 접미사에서 유추.
   recipientName?: string;
   recipientTimeZoneId?: string;
@@ -20,6 +23,20 @@ interface Props {
 
 function parseZone(annotated?: string): string | null {
   return annotated?.match(/\[(.+)\]$/)?.[1] ?? null;
+}
+
+// AI가 값을 확신하지 못하면 서버가 null을 반환할 수 있음 (API.md E09: "AI는 모르는 값을
+// 추측하지 않고 null과 낮은 confidence로 반환한다"). 이 경우 aiCandidate가 ""가 되는데,
+// 검증 없이 dayjs(...).tz(...)를 호출하면 "Invalid time value" 런타임 에러로 화면이 죽었음.
+// mock은 항상 유효한 값만 넣어놔서 안 걸렸다가 실제 서버 응답에서 처음 드러난 버그.
+function isValidInstant(value: string | null | undefined): value is string {
+  return !!value && dayjs(value).isValid();
+}
+
+// 위 문제를 원천적으로 막기 위한 안전 포맷터. 유효하지 않으면 fallback 텍스트를 보여준다.
+function formatInZone(value: string | null | undefined, zone: string, fallback = "확인 필요"): string {
+  if (!isValidInstant(value)) return fallback;
+  return dayjs(value).tz(zone).format("M/D HH:mm");
 }
 
 // C-4 의미 모호성 "조금 더 고민해보면?" 두 갈래 (기획안 3-1 step5)
@@ -45,9 +62,11 @@ export function AIReviewPanel({
 
   // C-3: AI 후보를 넣어두되 "자동 확정 금지" — 명시 확정해야 전송 가능.
   const aiCandidate = sf.deadline.value ?? "";
+  const hasAiCandidate = isValidInstant(aiCandidate);
   const [deadline, setDeadline] = useState("");
   const [deadlineConfirmed, setDeadlineConfirmed] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
+  // AI가 시각을 못 정했으면(hasAiCandidate=false) 처음부터 직접입력 패널을 열어준다
+  const [showPicker, setShowPicker] = useState(!hasAiCandidate);
 
   // 의도: AI 추정값을 미리 하이라이트하되 사용자가 바꿀 수 있음
   const [intent, setIntent] = useState<number>(sf.expectedOutcome.value?.includes("재검토") ? 1 : 0);
@@ -59,7 +78,10 @@ export function AIReviewPanel({
   const busy = confirmReview.isPending || sendReview.isPending;
 
   const warning = review.warnings.find((w) => w.code === ErrorCode.OUTSIDE_RECIPIENT_WORK_HOURS);
-  const altInstant = warning?.suggestedDeadline ? dayjs(warning.suggestedDeadline).toISOString() : null;
+  // suggestedDeadline도 형식이 이상할 수 있으니 검증 후에만 파싱 (안 그러면 dayjs().toISOString()에서 같은 종류의 에러가 날 수 있음)
+  const altInstant = isValidInstant(warning?.suggestedDeadline)
+    ? dayjs(warning!.suggestedDeadline).toISOString()
+    : null;
   // 기한 확정 후 AI 후보(충돌 시각)를 고른 상태 = 충돌 중
   const isConflicting = !!warning && deadlineConfirmed && deadline === aiCandidate;
   // 경고가 있으면 기한 확정 후 카드를 계속 보여준다 (충돌 → 조정됨 상태로 전환, B안)
@@ -94,11 +116,11 @@ export function AIReviewPanel({
           confirmed: true,
         },
       });
-      await sendReview.mutateAsync({
+      const sentMessage = await sendReview.mutateAsync({
         reviewId: review.id,
         req: { content: originalContent, scheduledFor: null },
       });
-      onSent();
+      onSent(sentMessage);
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
       if (code === ErrorCode.TIME_ZONE_REQUIRED) {
@@ -130,7 +152,7 @@ export function AIReviewPanel({
           label="기한"
           value={
             deadlineConfirmed
-              ? `${dayjs(deadline).tz(recipientZone).format("M/D HH:mm")} (${zoneShort(recipientZone)})`
+              ? `${formatInZone(deadline, recipientZone)} (${zoneShort(recipientZone)})`
               : "미확정"
           }
           danger={!deadlineConfirmed}
@@ -143,12 +165,17 @@ export function AIReviewPanel({
 
       {/* 질문블록 A — 기한 확정 (C-3) */}
       <QuestionBlock message={'"기한"의 정확한 기준 시각이 필요해요. 어떤 시간으로 확정할까요?'}>
-        <Pill
-          selected={deadlineConfirmed && deadline === aiCandidate}
-          onClick={() => pickDeadline(aiCandidate)}
-        >
-          {dayjs(aiCandidate).tz(senderZone).format("M/D HH:mm")} {senderZone}
-        </Pill>
+        {hasAiCandidate ? (
+          <Pill
+            selected={deadlineConfirmed && deadline === aiCandidate}
+            onClick={() => pickDeadline(aiCandidate)}
+          >
+            {formatInZone(aiCandidate, senderZone)} {senderZone}
+          </Pill>
+        ) : (
+          // AI가 확신 있는 값을 못 찾은 경우 (API.md E09) - 추측값을 보여주는 대신 직접입력을 유도
+          <p className="text-xs text-gray-400">AI가 시각을 특정하지 못했어요. 직접 입력해주세요.</p>
+        )}
         <Pill selected={showPicker} onClick={() => setShowPicker((v) => !v)}>
           직접 입력
         </Pill>
@@ -183,12 +210,14 @@ export function AIReviewPanel({
             <p className="mb-1 text-sm font-medium tracking-[-0.28px] text-warn">근무 시간 충돌</p>
             <p className="mb-2.5 text-sm tracking-[-0.28px] text-[#161719]">{warning?.message}</p>
             <div className="flex flex-wrap gap-1.5">
-              <Pill selected onClick={() => pickDeadline(aiCandidate)}>
-                {dayjs(aiCandidate).tz(senderZone).format("M/D HH:mm")} {senderZone}
-              </Pill>
+              {hasAiCandidate && (
+                <Pill selected onClick={() => pickDeadline(aiCandidate)}>
+                  {formatInZone(aiCandidate, senderZone)} {senderZone}
+                </Pill>
+              )}
               {altInstant && (
                 <Pill onClick={() => pickDeadline(altInstant)}>
-                  대안: {dayjs(altInstant).tz(recipientZone).format("M/D HH:mm")} {zoneShort(recipientZone)}
+                  대안: {formatInZone(altInstant, recipientZone)} {zoneShort(recipientZone)}
                 </Pill>
               )}
               <Pill disabled title="P1 범위">
@@ -202,7 +231,7 @@ export function AIReviewPanel({
               ✓
             </span>
             <p className="text-sm tracking-[-0.28px] text-[#161719]">
-              {dayjs(deadline).tz(recipientZone).format("M/D HH:mm")} {zoneShort(recipientZone)}로 조정됨 · Alex 근무시간 내
+              {formatInZone(deadline, recipientZone)} {zoneShort(recipientZone)}로 조정됨 · Alex 근무시간 내
             </p>
           </div>
         ))}

@@ -1,6 +1,8 @@
 import { mockDelay } from "@/shared/api/mockDelay";
 import type { AiReview, CreateAiReviewRequest, ConfirmAiReviewRequest, SendAiReviewRequest } from "@/types/aiReview";
 import type { MessageResponse } from "@/types/conversation";
+import { pushMockMessage } from "@/features/conversation/api/mock/conversationMock";
+import { understandingCardMock } from "@/features/understanding-card/api/mock/understandingCardMock";
 
 // 메모리에만 저장하는 초간단 mock 저장소. 새로고침하면 초기화됨 - 데모 스코프라 충분함.
 const reviewStore = new Map<string, AiReview>();
@@ -92,8 +94,9 @@ export const aiReviewMock = {
 
     reviewStore.set(reviewId, { ...review, status: "SENT" });
 
+    const messageId = `mock-message-${reviewId}`;
     const message: MessageResponse = {
-      id: `mock-message-${reviewId}`,
+      id: messageId,
       conversationId: review.conversationId,
       sender: { id: "self", displayName: "이서연", timeZoneId: "Asia/Seoul" },
       content: req.content,
@@ -105,6 +108,21 @@ export const aiReviewMock = {
       confirmationStatus: "REVIEW", // 10.4절: 카드 초기상태 REVIEW, 메시지도 REVIEW
       scheduledFor: req.scheduledFor ?? null,
     };
+
+    // 실서버(10.5절)는 /send가 메시지+카드를 한 트랜잭션으로 만들어서 응답에 포함시킴.
+    // mock도 동일하게: 대화 메시지 목록에 실제로 밀어넣고, 확정된 값으로 카드까지 같이 만들어 응답에 붙인다.
+    pushMockMessage(review.conversationId, message);
+    const card = understandingCardMock.createConfirmedCard(messageId, {
+      task: review.structuredFields.task.value ?? "",
+      assigneeDisplayName: "Alex",
+      deadlineInstant: review.structuredFields.deadline.value ?? new Date().toISOString(),
+      recipientTimeZoneId: "America/Los_Angeles",
+      expectedOutcome: review.structuredFields.expectedOutcome.value ?? "",
+      originalContent: review.originalContent,
+      translatedContent: review.translatedContent,
+    });
+    message.understandingCard = card;
+
     return mockDelay(message, 500);
   },
 };
