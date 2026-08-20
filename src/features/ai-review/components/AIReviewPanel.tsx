@@ -190,7 +190,7 @@ export function AIReviewPanel({
       ) : (
         <>
           {/* 질문블록 — 기한 확정 (C-3) */}
-          <QuestionBlock message={'"기한"의 정확한 기준 시각이 필요해요. 어떤 시간으로 확정할까요?'}>
+          <QuestionBlock message={"정확한 마감 시각이 필요해요. 어떤 시간으로 확정할까요?"}>
             {hasAiCandidate ? (
               <Pill
                 selected={deadlineConfirmed && deadline === aiCandidate}
