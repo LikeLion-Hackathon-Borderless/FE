@@ -6,6 +6,7 @@ import { DateTimePicker } from "@/shared/ui/DateTimePicker";
 import { ErrorCode } from "@/shared/api/errorCodes";
 import { zoneShort } from "@/shared/utils/timezoneLabel";
 import { useConfirmAIReview, useSendAIReview, useAnswerAmbiguity } from "../hooks/useAIReview";
+import { LabelValueRow } from "@/shared/ui/LabelValueRow";
 
 interface Props {
   review: AiReview;
@@ -162,9 +163,9 @@ export function AIReviewPanel({
     <PanelShell onClose={onClose}>
       {/* 상단 읽기전용 요약 */}
       <dl className="mb-4 flex flex-col gap-5 text-sm">
-        <SummaryRow label="업무" value={sf.task.value ?? "-"} />
-        <SummaryRow label="담당자" value={recipientLabel} />
-        <SummaryRow
+        <LabelValueRow label="업무" value={sf.task.value ?? "-"} />
+        <LabelValueRow label="담당자" value={recipientLabel} />
+        <LabelValueRow
           label="기한"
           value={
             deadlineConfirmed
@@ -173,11 +174,11 @@ export function AIReviewPanel({
           }
           danger={!deadlineConfirmed}
         />
-        <SummaryRow label="근거" value={review.evidence[0]?.fileName ?? "최근 대화"} />
+        <LabelValueRow label="근거" value={review.evidence[0]?.fileName ?? "최근 대화"} />
       </dl>
 
       {/* 요약/질문 구분선 (시안 #C8D2DF) */}
-      <div className="mb-4 h-px bg-[#C8D2DF]" />
+      <div className="mb-4 h-px bg-divider" />
 
       {/* AI 모호성 질문 - 서버가 실제로 이 메시지에서 모호하다고 판단한 부분만 동적으로 뜬다.
           질문이 남아있는 동안은 기한 확정/전송 UI를 아직 안 보여준다 (다음 질문이 또 있을 수 있어서). */}
@@ -225,7 +226,7 @@ export function AIReviewPanel({
             (isConflicting ? (
               <div className="mb-3 rounded-lg bg-white p-3">
                 <p className="mb-1 text-sm font-medium tracking-[-0.28px] text-warn">근무 시간 충돌</p>
-                <p className="mb-2.5 text-sm tracking-[-0.28px] text-[#161719]">{warning?.message}</p>
+                <p className="mb-2.5 text-sm tracking-[-0.28px] text-heading">{warning?.message}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {hasAiCandidate && (
                     <Pill selected onClick={() => pickDeadline(aiCandidate)}>
@@ -247,7 +248,7 @@ export function AIReviewPanel({
                 <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-xs text-white">
                   ✓
                 </span>
-                <p className="text-sm tracking-[-0.28px] text-[#161719]">
+                <p className="text-sm tracking-[-0.28px] text-heading">
                   {formatInZone(deadline, recipientZone)} {zoneShort(recipientZone)}로 조정됨 · Alex 근무시간 내
                 </p>
               </div>
@@ -290,7 +291,7 @@ function AmbiguityQuestionBlock({
   return (
     <div className="mb-3 rounded-lg bg-block-gray p-3">
       <p className="mb-1 text-xs text-gray-400">"{item.span}"</p>
-      <p className="mb-2 text-sm font-medium tracking-[-0.28px] text-[#161719]">{item.reason}</p>
+      <p className="mb-2 text-sm font-medium tracking-[-0.28px] text-heading">{item.reason}</p>
       <div className="flex flex-wrap gap-1.5">
         {item.candidates.map((c) => (
           <Pill key={c} onClick={() => onAnswer(c)} disabled={isPending}>
@@ -335,15 +336,15 @@ function PanelShell({ children, onClose }: { children: React.ReactNode; onClose:
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="rounded-lg bg-primary-100 px-2 py-1.5 text-xs font-medium text-[#148280]">
+            <span className="rounded-lg bg-primary-100 px-2 py-1.5 text-xs font-medium text-primary-600">
               AI 검토
             </span>
-            <span className="text-base font-medium tracking-[-0.32px] text-[#171717]">공동 이해 준비</span>
+            <span className="text-base font-medium tracking-[-0.32px] text-heading">공동 이해 준비</span>
           </div>
-          <button onClick={onClose} aria-label="닫기" className="text-gray-400 hover:opacity-70">
+          <button onClick={onClose} aria-label="닫기" className="text-label hover:opacity-70">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M19.0001 1L1 19.0001" stroke="#9299A3" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M1 1L19.0001 19.0001" stroke="#9299A3" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M19.0001 1L1 19.0001" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M1 1L19.0001 19.0001" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>
@@ -353,19 +354,10 @@ function PanelShell({ children, onClose }: { children: React.ReactNode; onClose:
   );
 }
 
-function SummaryRow({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
-  return (
-    <div className="flex gap-4 text-sm font-medium tracking-[-0.28px]">
-      <dt className="w-14 flex-shrink-0 text-[#9299A3]">{label}</dt>
-      <dd className={danger ? "text-warn" : "text-[#323538]"}>{value}</dd>
-    </div>
-  );
-}
-
 function QuestionBlock({ message, children }: { message: string; children: React.ReactNode }) {
   return (
     <div className="mb-3 rounded-lg bg-block-gray p-3">
-      <p className="mb-2 text-sm font-medium tracking-[-0.28px] text-[#161719]">{message}</p>
+      <p className="mb-2 text-sm font-medium tracking-[-0.28px] text-heading">{message}</p>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
   );
@@ -391,7 +383,7 @@ function Pill({
       disabled={disabled}
       title={title}
       className={`rounded-pill px-3 py-1.5 text-sm font-medium tracking-[-0.28px] transition-colors ${
-        selected ? "bg-primary-500 text-white" : "bg-pill-gray text-[#9299A3] hover:brightness-95"
+        selected ? "bg-primary-500 text-white" : "bg-pill-gray text-label hover:brightness-95"
       } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
       {children}

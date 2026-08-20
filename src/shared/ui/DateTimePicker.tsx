@@ -22,7 +22,7 @@ interface Props {
 }
 
 function toWall(instant: string, zone: string): string {
-  if (!instant || !dayjs(instant).isValid()) return "";
+  if (!instant) return "";
   return dayjs(instant).tz(zone).format("YYYY-MM-DDTHH:mm");
 }
 
@@ -45,7 +45,7 @@ export function DateTimePicker({
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-3">
-      <label htmlFor={inputId} className="mb-1.5 block text-xs font-medium text-gray-500">
+      <label htmlFor={inputId} className="mb-1.5 block text-xs font-medium text-label">
         기준 시각 · {editLabel}
       </label>
       <input
@@ -54,13 +54,13 @@ export function DateTimePicker({
         value={toWall(value, editZone)}
         disabled={disabled}
         onChange={(e) => onChange(fromWall(e.target.value, editZone))}
-        className="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50"
+        className="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-ink focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50"
       />
 
       {value && previewZone && (
         <div className="mt-2.5 flex items-stretch gap-2 text-xs">
           <ZoneChip label={editLabel} instant={value} zone={editZone} />
-          <span className="flex items-center text-gray-300">=</span>
+          <span className="flex items-center text-label">=</span>
           <ZoneChip label={previewLabel} instant={value} zone={previewZone} outside={previewOutsideHours} />
         </div>
       )}
@@ -85,8 +85,8 @@ function ZoneChip({
         outside ? "border-warn/30 bg-warn/10" : "border-gray-100 bg-gray-50"
       }`}
     >
-      <div className="text-[11px] text-gray-400">{label}</div>
-      <div className={`font-medium ${outside ? "text-warn" : "text-gray-900"}`}>
+      <div className="text-[11px] text-label">{label}</div>
+      <div className={`font-medium ${outside ? "text-warn" : "text-ink"}`}>
         {dayjs(instant).tz(zone).format("M/D (ddd) HH:mm")}
       </div>
     </div>

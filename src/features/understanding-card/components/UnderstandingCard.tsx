@@ -7,6 +7,7 @@ import { CardVersionBadge } from "./CardVersionBadge";
 import { ResponseButtonGroup } from "./ResponseButtonGroup";
 import { SenderRevisionActions } from "./SenderRevisionActions";
 import { zoneShort } from "@/shared/utils/timezoneLabel";
+import { LabelValueRow } from "@/shared/ui/LabelValueRow";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -67,13 +68,13 @@ export function UnderstandingCard({ card, viewerRole, onResponded, onRevised, su
       </div>
 
       <dl className="space-y-2 text-sm">
-        <Row label="업무" value={card.task} />
-        <Row label="담당자" value={card.assignee.displayName} />
-        <Row label="기한" value={deadlineText} emphasize />
-        <Row label="기대 결과" value={card.expectedOutcome} />
+        <LabelValueRow labelWidth="w-20" label="업무" value={card.task} />
+        <LabelValueRow labelWidth="w-20" label="담당자" value={card.assignee.displayName} />
+        <LabelValueRow labelWidth="w-20" label="기한" value={deadlineText} emphasize />
+        <LabelValueRow labelWidth="w-20" label="기대 결과" value={card.expectedOutcome} />
         {/* 백엔드엔 decisionType이 없고 needsClarification(boolean)만 있음.
             와이어프레임의 "결정 상태" 행은 대응 필드가 없어 제거 - 확인 필요 시에만 표시. (PM 확인 항목) */}
-        {card.needsClarification && <Row label="상태" value="확인 필요" />}
+        {card.needsClarification && <LabelValueRow labelWidth="w-20" label="상태" value="확인 필요" />}
 
         {/* 첨부 + 원문 보기 (Image 2/5) */}
         <div className="flex justify-between gap-4">
@@ -110,15 +111,6 @@ export function UnderstandingCard({ card, viewerRole, onResponded, onRevised, su
           </div>
         )
       )}
-    </div>
-  );
-}
-
-function Row({ label, value, emphasize }: { label: string; value: string; emphasize?: boolean }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <dt className="w-20 flex-shrink-0 text-gray-400">{label}</dt>
-      <dd className={emphasize ? "font-medium text-gray-900" : "text-gray-700"}>{value}</dd>
     </div>
   );
 }
