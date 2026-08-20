@@ -8,6 +8,7 @@ export function DeadlineProposalForm({
   recipientZone = "America/Los_Angeles",
   senderZone = "Asia/Seoul",
   recipientName = "나",
+  senderName = "발신자",
   onSubmitted,
 }: {
   cardId: string;
@@ -15,6 +16,7 @@ export function DeadlineProposalForm({
   recipientZone?: string;
   senderZone?: string;
   recipientName?: string;
+  senderName?: string;
   onSubmitted?: (bubbleText: string) => void;
 }) {
   const [comment, setComment] = useState("");
@@ -45,7 +47,7 @@ export function DeadlineProposalForm({
         editZone={recipientZone}
         editLabel={recipientName}
         previewZone={senderZone}
-        previewLabel="발신자"
+        previewLabel={senderName}
       />
       <button
         onClick={handleSubmit}

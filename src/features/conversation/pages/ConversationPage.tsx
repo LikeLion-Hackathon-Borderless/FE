@@ -107,6 +107,13 @@ export function ConversationPage() {
       ? "recipient"
       : "sender";
 
+  // 카드 재조정 UI(DeadlineProposalForm/SenderRevisionActions)가 "발신자 시각/이름"을
+  // 보여줄 때 쓸 실제 값. cardViewerRole 기준으로 어느 쪽이 발신자인지 이미 알고 있으므로,
+  // 카드에는 없는 발신자 정보를 viewerSelf/viewerPartner에서 그대로 가져온다
+  // (이전엔 이 정보가 안 내려가서 컴포넌트들이 "이서연"/"Asia/Seoul"로 하드코딩되어 있었음).
+  const cardSenderName = cardViewerRole === "sender" ? viewerSelf.name : viewerPartner.name;
+  const cardSenderTimeZoneId = cardViewerRole === "sender" ? viewerSelf.tz : viewerPartner.tz;
+
   // activeCardId는 컴포넌트 로컬 상태라서, 다른 탭 갔다가 돌아오면(리마운트) 초기화되어
   // 방금 만든 카드가 사라지는 것처럼 보이는 문제가 있었음. 서버 응답(GET /messages)에
   // 이미 각 메시지의 understandingCard가 포함되어 있으므로(API.md 8.3절), 메시지 목록을
@@ -223,7 +230,13 @@ export function ConversationPage() {
                     key={`sup-${c.id}-${c.revision}`}
                     className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}
                   >
-                    <UnderstandingCard card={c} viewerRole={cardViewerRole} superseded />
+                    <UnderstandingCard
+                      card={c}
+                      viewerRole={cardViewerRole}
+                      senderName={cardSenderName}
+                      senderTimeZoneId={cardSenderTimeZoneId}
+                      superseded
+                    />
                   </div>
                 ))}
 
@@ -232,6 +245,8 @@ export function ConversationPage() {
                     <UnderstandingCard
                       card={activeForThisMessage}
                       viewerRole={cardViewerRole}
+                      senderName={cardSenderName}
+                      senderTimeZoneId={cardSenderTimeZoneId}
                       onResponded={handleCardResponded}
                       onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
                     />
@@ -249,6 +264,8 @@ export function ConversationPage() {
                 <UnderstandingCard
                   card={cardQuery.data}
                   viewerRole={cardViewerRole}
+                  senderName={cardSenderName}
+                  senderTimeZoneId={cardSenderTimeZoneId}
                   onResponded={handleCardResponded}
                   onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
                 />

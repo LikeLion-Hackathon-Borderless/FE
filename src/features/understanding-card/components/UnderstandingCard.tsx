@@ -16,6 +16,12 @@ interface Props {
   card: UnderstandingCardType;
   // 발신자 화면인지 수신자 화면인지에 따라 3버튼 노출 여부가 다름 (와이어프레임 이미지2 vs 이미지5)
   viewerRole: "sender" | "recipient";
+  // 카드에는 수신자(assignee) 정보만 있고 발신자 정보가 없음 - 이전엔 그래서
+  // DeadlineProposalForm/SenderRevisionActions가 발신자 이름/타임존을 "이서연"/"Asia/Seoul"로
+  // 하드코딩해뒀었음. 실제 로그인 유저가 다른 사람/다른 시간대여도 항상 그렇게 떴던 버그.
+  // 부모(ConversationPage)는 어느 쪽이 발신자인지 이미 알고 있으므로 여기로 실제 값을 전달받는다.
+  senderName?: string;
+  senderTimeZoneId?: string;
   // 수신자가 3버튼으로 응답하면 대화에 남길 말풍선 텍스트를 부모로 올려보냄 (Image 6/10/12)
   onResponded?: (bubbleText: string) => void;
   // 발신자가 카드를 재생성하면 이전 revision을 부모가 "대체됨"으로 보관 (Image 7)
@@ -34,7 +40,15 @@ function attachmentName(a: unknown): string | null {
   return null;
 }
 
-export function UnderstandingCard({ card, viewerRole, onResponded, onRevised, superseded }: Props) {
+export function UnderstandingCard({
+  card,
+  viewerRole,
+  senderName,
+  senderTimeZoneId,
+  onResponded,
+  onRevised,
+  superseded,
+}: Props) {
   const [showOriginal, setShowOriginal] = useState(false);
 
   // 기한: 수신자 현지시각 + 존 라벨 (Image 2/5 "7/30 17:00 (LA)")
@@ -103,11 +117,21 @@ export function UnderstandingCard({ card, viewerRole, onResponded, onRevised, su
 
       {/* PENDING = 발신자 카드 재생성 (Image 7/8) / REVIEW·AGREED + 수신자 = 3버튼 */}
       {card.state === "PENDING" ? (
-        <SenderRevisionActions card={card} onRevised={onRevised} />
+        <SenderRevisionActions
+          card={card}
+          senderName={senderName}
+          senderZone={senderTimeZoneId}
+          onRevised={onRevised}
+        />
       ) : (
         viewerRole === "recipient" && (
           <div className="mt-4">
-            <ResponseButtonGroup card={card} onResponded={onResponded} />
+            <ResponseButtonGroup
+              card={card}
+              senderName={senderName}
+              senderZone={senderTimeZoneId}
+              onResponded={onResponded}
+            />
           </div>
         )
       )}

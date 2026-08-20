@@ -21,9 +21,13 @@ const AGREE_MESSAGE = "이해한 내용이 맞습니다. 지금 바로 착수할
 // 응답이 확정되면 대화에 남길 말풍선 텍스트를 부모(ConversationPage)로 올려보냄
 export function ResponseButtonGroup({
   card,
+  senderName,
+  senderZone,
   onResponded,
 }: {
   card: UnderstandingCard;
+  senderName?: string;
+  senderZone?: string;
   onResponded?: (bubbleText: string) => void;
 }) {
   const [selected, setSelected] = useState<CardResponseType | null>(null);
@@ -82,6 +86,8 @@ export function ResponseButtonGroup({
           currentDeadline={card.deadline.instant}
           recipientZone={card.deadline.viewerTimeZoneId}
           recipientName={card.assignee.displayName}
+          senderZone={senderZone}
+          senderName={senderName}
           onSubmitted={(text) => onResponded?.(text)}
         />
       )}
