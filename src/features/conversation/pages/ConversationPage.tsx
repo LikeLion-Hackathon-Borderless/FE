@@ -47,18 +47,19 @@ export function ConversationPage() {
     });
   }, [conversationId, queryClient]);
 
-  // 두 데모 정체성: 이서연(로그인 유저, 근무시간 실데이터) / Alex(대화 상대, 계약에 근무시간 없어 기본값)
-  const ME = {
-    id: authUser?.id ?? "mock-user-self",
-    name: authUser?.displayName ?? "이서연",
+  // 로그인한 나 / 대화 상대. authUser·other가 아직 로딩 중이면 잠깐 기본값을 씀
+  // (로딩 끝나면 실제 데이터로 바로 교체됨 - 이 기본값 자체가 화면에 오래 남으면 안 됨).
+  const viewerSelf = {
+    id: authUser?.id ?? "unknown-self",
+    name: authUser?.displayName ?? "나",
     tz: authUser?.timeZoneId ?? "Asia/Seoul",
     workStart: authUser?.workStart,
     workEnd: authUser?.workEnd,
     workDays: authUser?.workDays,
   };
-  const ALEX = {
-    id: other?.id ?? "mock-alex",
-    name: other?.displayName ?? "Alex",
+  const viewerPartner = {
+    id: other?.id ?? "unknown-partner",
+    name: other?.displayName ?? "상대방",
     tz: other?.timeZoneId ?? "America/Los_Angeles",
     workStart: undefined,
     workEnd: undefined,
@@ -66,23 +67,23 @@ export function ConversationPage() {
   };
 
   // 현재 보는 시점. 기본=로그인 유저(=배포 정답). 토글은 데모 전용 (실배포 제거).
-  const [viewerId, setViewerId] = useState<string>(ME.id);
+  const [viewerId, setViewerId] = useState<string>(viewerSelf.id);
 
-  // useState(ME.id)는 최초 렌더 시점에만 평가됨. 로그인 유저 정보(authUser)가
-  // 그 이후에 늦게 로딩 완료되면(흔한 타이밍) viewerId가 임시값("mock-user-self")에
+  // useState(viewerSelf.id)는 최초 렌더 시점에만 평가됨. 로그인 유저 정보(authUser)가
+  // 그 이후에 늦게 로딩 완료되면(흔한 타이밍) viewerId가 임시값("unknown-self")에
   // 고정된 채로 안 바뀌는 버그가 있었음. 그 결과 실제 서버가 보내는 진짜 UUID인
   // sender.id와 viewerId가 서로 안 맞아서, 본인이 보낸 메시지도 "상대방이 보낸 것"으로
-  // 표시(회색)되는 문제가 있었음. authUser.id가 갱신되면 (Alex 시점 데모 토글 중이
+  // 표시(회색)되는 문제가 있었음. authUser.id가 갱신되면 (상대방 시점 데모 토글 중이
   // 아닐 때만) viewerId를 실제 로그인 유저 id로 다시 맞춰준다.
   useEffect(() => {
-    if (authUser?.id && viewerId !== ALEX.id) {
+    if (authUser?.id && viewerId !== viewerPartner.id) {
       setViewerId(authUser.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
 
-  const viewingAsMe = viewerId !== ALEX.id;
-  const partner = viewingAsMe ? ALEX : ME; // 헤더엔 상대가 뜸
+  const viewingAsMe = viewerId !== viewerPartner.id;
+  const partner = viewingAsMe ? viewerPartner : viewerSelf; // 헤더엔 상대가 뜸
   const partnerOffHours = !isWithinWorkHours(
     partner.tz,
     partner.workStart,
@@ -188,16 +189,16 @@ export function ConversationPage() {
           {USE_MOCK && (
             <div className="order-last flex w-full items-center gap-1 rounded-md bg-white p-0.5 text-xs sm:order-none sm:ml-auto sm:w-auto">
               <button
-                onClick={() => setViewerId(ME.id)}
+                onClick={() => setViewerId(viewerSelf.id)}
                 className={`flex-1 rounded px-2 py-1 sm:flex-none ${viewingAsMe ? "bg-primary-500 text-white" : "text-gray-500"}`}
               >
-                {ME.name} 시점
+                {viewerSelf.name} 시점
               </button>
               <button
-                onClick={() => setViewerId(ALEX.id)}
+                onClick={() => setViewerId(viewerPartner.id)}
                 className={`flex-1 rounded px-2 py-1 sm:flex-none ${!viewingAsMe ? "bg-primary-500 text-white" : "text-gray-500"}`}
               >
-                {ALEX.name} 시점
+                {viewerPartner.name} 시점
               </button>
             </div>
           )}
