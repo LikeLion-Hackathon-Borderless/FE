@@ -1,16 +1,18 @@
+import { useT } from "@/shared/i18n/i18n";
 import { useNavigate } from "react-router-dom";
 import { useConversationList } from "../hooks/useConversations";
 import dayjs from "dayjs";
 
 export function ConversationList() {
+  const t = useT();
   const { data: conversations, isLoading } = useConversationList();
   const navigate = useNavigate();
 
-  if (isLoading) return <p className="p-4 text-sm text-gray-400">불러오는 중...</p>;
+  if (isLoading) return <p className="p-4 text-sm text-gray-400">{t("conv.loading")}</p>;
 
   if (!conversations || conversations.length === 0) {
     // 빈 상태: GET /conversations가 [] (API.md 13.3절)
-    return <p className="p-4 text-sm text-gray-400">아직 대화가 없습니다.</p>;
+    return <p className="p-4 text-sm text-gray-400">{t("conv.empty")}</p>;
   }
 
   return (

@@ -1,3 +1,4 @@
+import { useT } from "@/shared/i18n/i18n";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -12,6 +13,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 export function AgreementLogPage() {
+  const t = useT();
   // 데모: 현재 워크스페이스의 첫 대화 기준. 실배포는 라우트 param 또는 선택된 대화로 스코프.
   const conversationsQuery = useConversationList();
   const conversationId = conversationsQuery.data?.[0]?.id ?? null;
@@ -22,7 +24,7 @@ export function AgreementLogPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <h1 className="mb-4 text-lg font-medium text-gray-900">합의 기록</h1>
+      <h1 className="mb-4 text-lg font-medium text-gray-900">{t("log.title")}</h1>
 
       {logsQuery.isLoading ? (
         <div className="flex justify-center py-12">
@@ -32,16 +34,16 @@ export function AgreementLogPage() {
         <ErrorState error={logsQuery.error} onRetry={() => logsQuery.refetch()} />
       ) : logs.length === 0 ? (
         <EmptyState
-          title="아직 합의 기록이 없어요."
+          title={t("log.empty")}
           description="AI 검토로 확정 전송하면 여기에 남아요."
         />
       ) : (
         <>
           {/* 헤더 라벨: 좁은 화면(카드형으로 쌓이는 md 미만)에서는 각 행 안에 라벨이 이미 붙으므로 숨김 */}
           <div className="hidden border-b border-gray-100 pb-2 text-xs text-gray-400 md:grid md:grid-cols-[140px_1fr_120px]">
-            <span>언제</span>
-            <span>무엇에</span>
-            <span>누가</span>
+            <span>{t("log.when")}</span>
+            <span>{t("log.what")}</span>
+            <span>{t("log.who")}</span>
           </div>
           {logs.map((log, i) => (
             <LogRow key={log.id} log={log} highlight={i === lastIndex} />
@@ -53,7 +55,7 @@ export function AgreementLogPage() {
               disabled={logsQuery.isFetchingNextPage}
               className="mt-4 w-full rounded-md border border-gray-200 py-2 text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50"
             >
-              {logsQuery.isFetchingNextPage ? "불러오는 중…" : "더 보기"}
+              {logsQuery.isFetchingNextPage ? t("log.loading") : t("log.loadMore")}
             </button>
           )}
         </>
@@ -63,13 +65,14 @@ export function AgreementLogPage() {
 }
 
 function LogRow({ log, highlight }: { log: AgreementLogEntry; highlight: boolean }) {
+  const t = useT();
   // 언제: agreedAt이 null(PENDING)이면 현재시각으로 새지 않게 "—" 처리 (기존 버그 수정)
   const when = log.agreedAt
     ? `${dayjs(log.agreedAt).tz("Asia/Seoul").format("M/D HH:mm")} KST`
     : "—";
 
   const deadline = `${dayjs(log.deadline).tz("America/Los_Angeles").format("M/D HH:mm")} (LA)`;
-  const statusLabel = log.status === "AGREED" ? "합의 완료" : "확인 대기";
+  const statusLabel = log.status === "AGREED" ? t("log.agreed") : t("log.pending");
   const who = log.agreedBy?.displayName ? `${log.agreedBy.displayName} →` : "—";
 
   return (
@@ -81,11 +84,11 @@ function LogRow({ log, highlight }: { log: AgreementLogEntry; highlight: boolean
     >
       {/* md 미만: 라벨을 행 안에 같이 표시(헤더를 숨겼으므로) */}
       <span className="text-gray-500">
-        <span className="mr-1 text-gray-300 md:hidden">언제</span>
+        <span className="mr-1 text-gray-300 md:hidden">{t("log.when")}</span>
         {when}
       </span>
       <div className="text-gray-800">
-        {statusLabel} · 공통 이해 카드 v{log.revision} (마감 {deadline})
+        {statusLabel} · {t("card.title")} v{log.revision} ({t("log.deadlineShort")} {deadline})
         {log.fileReferences.length > 0 && (
           <div className="mt-0.5 text-xs text-gray-400">
             {log.fileReferences.map((f) => `${f.fileName} ${f.locator}`).join(", ")}

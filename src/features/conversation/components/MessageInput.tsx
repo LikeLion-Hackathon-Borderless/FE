@@ -1,3 +1,4 @@
+import { useT } from "@/shared/i18n/i18n";
 import { useState, useEffect, useRef } from "react";
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function MessageInput({ onSendAsIs, onRequestAIReview, disabled, clearSignal }: Props) {
+  const t = useT();
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,7 +29,7 @@ export function MessageInput({ onSendAsIs, onRequestAIReview, disabled, clearSig
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="메시지를 입력하세요."
+          placeholder={t("input.placeholder")}
           rows={2}
           className="w-full resize-none text-sm placeholder:text-gray-400 focus:outline-none"
         />
@@ -49,19 +51,19 @@ export function MessageInput({ onSendAsIs, onRequestAIReview, disabled, clearSig
               <path d="M10.1857 8.92859V13.9286" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M7.68573 11.4286H12.6857" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            문서 첨부
+            {t("input.attachDocument")}
           </button>
 
           {/* 첨부된 파일 칩 */}
           {file && (
             <span className="flex items-center gap-2 rounded-md bg-primary-50 px-3 py-2 text-sm text-gray-700">
               <span className="max-w-[200px] truncate font-medium">{file.name}</span>
-              <span className="text-xs text-gray-400">첨부됨</span>
+              <span className="text-xs text-gray-400">{t("input.attached")}</span>
               <button
                 type="button"
                 onClick={() => setFile(null)}
                 className="text-gray-400 hover:text-gray-600"
-                aria-label="첨부 제거"
+                aria-label={t("input.removeAttachment")}
               >
                 ✕
               </button>
@@ -77,7 +79,7 @@ export function MessageInput({ onSendAsIs, onRequestAIReview, disabled, clearSig
           onClick={() => onRequestAIReview(content)}
           className="rounded-md border border-primary-500 px-4 py-2 text-sm font-medium text-primary-600 disabled:opacity-50"
         >
-          AI 검토하기
+          {t("input.aiReview")}
         </button>
         <button
           disabled={disabled || !content.trim()}
@@ -88,7 +90,7 @@ export function MessageInput({ onSendAsIs, onRequestAIReview, disabled, clearSig
           }}
           className="rounded-md bg-primary-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          전송하기
+          {t("input.send")}
         </button>
       </div>
     </div>

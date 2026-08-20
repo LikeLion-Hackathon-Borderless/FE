@@ -1,3 +1,4 @@
+import { useT } from "@/shared/i18n/i18n";
 import { useState } from "react";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -49,6 +50,7 @@ export function UnderstandingCard({
   onRevised,
   superseded,
 }: Props) {
+  const t = useT();
   const [showOriginal, setShowOriginal] = useState(false);
 
   // 기한: 수신자 현지시각 + 존 라벨 (Image 2/5 "7/30 17:00 (LA)")
@@ -63,11 +65,11 @@ export function UnderstandingCard({
     return (
       <div className="w-full max-w-md rounded-lg border border-gray-200 bg-gray-50 p-4 opacity-80">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-400">공통 이해 카드</span>
+          <span className="text-sm font-medium text-gray-400">{t("card.title")}</span>
           <CardVersionBadge revision={card.revision} state={card.state} superseded />
         </div>
         <div className="flex justify-between gap-4 text-sm">
-          <span className="text-gray-400">기한</span>
+          <span className="text-gray-400">{t("card.deadline")}</span>
           <span className="text-gray-400">{deadlineText}</span>
         </div>
       </div>
@@ -77,22 +79,22 @@ export function UnderstandingCard({
   return (
     <div className="w-full max-w-md rounded-lg border border-primary-100 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-900">공통 이해 카드</span>
+        <span className="text-sm font-medium text-gray-900">{t("card.title")}</span>
         <CardVersionBadge revision={card.revision} state={card.state} />
       </div>
 
       <dl className="space-y-2 text-sm">
-        <LabelValueRow labelWidth="w-20" label="업무" value={card.task} />
-        <LabelValueRow labelWidth="w-20" label="담당자" value={card.assignee.displayName} />
-        <LabelValueRow labelWidth="w-20" label="기한" value={deadlineText} emphasize />
-        <LabelValueRow labelWidth="w-20" label="기대 결과" value={card.expectedOutcome} />
+        <LabelValueRow labelWidth="w-20" label={t("card.task")} value={card.task} />
+        <LabelValueRow labelWidth="w-20" label={t("card.assignee")} value={card.assignee.displayName} />
+        <LabelValueRow labelWidth="w-20" label={t("card.deadline")} value={deadlineText} emphasize />
+        <LabelValueRow labelWidth="w-20" label={t("card.expectedOutcome")} value={card.expectedOutcome} />
         {/* 백엔드엔 decisionType이 없고 needsClarification(boolean)만 있음.
             와이어프레임의 "결정 상태" 행은 대응 필드가 없어 제거 - 확인 필요 시에만 표시. (PM 확인 항목) */}
-        {card.needsClarification && <LabelValueRow labelWidth="w-20" label="상태" value="확인 필요" />}
+        {card.needsClarification && <LabelValueRow labelWidth="w-20" label={t("card.status")} value={t("card.needsCheck")} />}
 
         {/* 첨부 + 원문 보기 (Image 2/5) */}
         <div className="flex justify-between gap-4">
-          <dt className="w-20 flex-shrink-0 text-gray-400">첨부</dt>
+          <dt className="w-20 flex-shrink-0 text-gray-400">{t("card.attachment")}</dt>
           <dd className="text-gray-700">
             {fileNames && <span>{fileNames} · </span>}
             <button
@@ -100,7 +102,7 @@ export function UnderstandingCard({
               onClick={() => setShowOriginal((v) => !v)}
               className="text-primary-600 hover:underline"
             >
-              {showOriginal ? "원문 접기" : "원문 보기"}
+              {showOriginal ? t("card.hideOriginal") : t("card.showOriginal")}
             </button>
           </dd>
         </div>
