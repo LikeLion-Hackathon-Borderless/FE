@@ -1,5 +1,6 @@
 import { useState } from "react";
 import dayjs from "dayjs";
+import { useT } from "@/shared/i18n/i18n";
 import type { AiReview } from "@/types/aiReview";
 import type { MessageResponse } from "@/types/conversation";
 import { DateTimePicker } from "@/shared/ui/DateTimePicker";
@@ -55,12 +56,13 @@ export function AIReviewPanel({
   // 최초 1회 초기값으로만 쓰고, 그 이후는 이 로컬 상태를 기준으로 렌더링한다.
   const [review, setReview] = useState<AiReview>(initialReview);
   const sf = review.structuredFields;
+  const t = useT();
 
   const senderZone = senderTimeZoneId ?? parseZone(sf.deadline.senderLocal) ?? "Asia/Seoul";
   const recipientZone =
     recipientTimeZoneId ?? parseZone(sf.deadline.recipientLocal) ?? "America/Los_Angeles";
   const recipientLabel = recipientName ?? sf.assigneeUserId.value ?? "수신자";
-  const senderLabel = senderName ?? "이서연";
+  const senderLabel = senderName ?? "발신자";
 
   // C-3: AI 후보를 넣어두되 "자동 확정 금지" — 명시 확정해야 전송 가능.
   const aiCandidate = sf.deadline.value ?? "";
@@ -163,18 +165,18 @@ export function AIReviewPanel({
     <PanelShell onClose={onClose}>
       {/* 상단 읽기전용 요약 */}
       <dl className="mb-4 flex flex-col gap-5 text-sm">
-        <LabelValueRow label="업무" value={sf.task.value ?? "-"} />
-        <LabelValueRow label="담당자" value={recipientLabel} />
+        <LabelValueRow label={t("aiReview.task")} value={sf.task.value ?? "-"} />
+        <LabelValueRow label={t("aiReview.assignee")} value={recipientLabel} />
         <LabelValueRow
-          label="기한"
+          label={t("aiReview.deadline")}
           value={
             deadlineConfirmed
               ? `${formatInZone(deadline, recipientZone)} (${zoneShort(recipientZone)})`
-              : "미확정"
+              : t("common.undetermined")
           }
           danger={!deadlineConfirmed}
         />
-        <LabelValueRow label="근거" value={review.evidence[0]?.fileName ?? "최근 대화"} />
+        <LabelValueRow label={t("aiReview.evidence")} value={review.evidence[0]?.fileName ?? t("aiReview.recentConversation")} />
       </dl>
 
       {/* 요약/질문 구분선 (시안 #C8D2DF) */}
@@ -191,7 +193,7 @@ export function AIReviewPanel({
       ) : (
         <>
           {/* 질문블록 — 기한 확정 (C-3) */}
-          <QuestionBlock message={"정확한 마감 시각이 필요해요. 어떤 시간으로 확정할까요?"}>
+          <QuestionBlock message={t("aiReview.deadlineQuestion")}>
             {hasAiCandidate ? (
               <Pill
                 selected={deadlineConfirmed && deadline === aiCandidate}
@@ -201,10 +203,10 @@ export function AIReviewPanel({
               </Pill>
             ) : (
               // AI가 확신 있는 값을 못 찾은 경우 (API.md E09) - 추측값을 보여주는 대신 직접입력을 유도
-              <p className="text-xs text-gray-400">AI가 시각을 특정하지 못했어요. 직접 입력해주세요.</p>
+              <p className="text-xs text-gray-400">{t("aiReview.noTimeGuess")}</p>
             )}
             <Pill selected={showPicker} onClick={() => setShowPicker((v) => !v)}>
-              직접 입력
+              {t("common.directInput")}
             </Pill>
             {showPicker && (
               <div className="mt-2 w-full">
@@ -225,7 +227,7 @@ export function AIReviewPanel({
           {showConflictCard &&
             (isConflicting ? (
               <div className="mb-3 rounded-lg bg-white p-3">
-                <p className="mb-1 text-sm font-medium tracking-[-0.28px] text-warn">근무 시간 충돌</p>
+                <p className="mb-1 text-sm font-medium tracking-[-0.28px] text-warn">{t("aiReview.workHoursConflict")}</p>
                 <p className="mb-2.5 text-sm tracking-[-0.28px] text-heading">{warning?.message}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {hasAiCandidate && (
@@ -262,10 +264,10 @@ export function AIReviewPanel({
               disabled={!canSend}
               className="w-full rounded-pill bg-ink px-3 py-2 text-xl font-medium tracking-[-0.4px] text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {busy ? "전송 중…" : "카드 생성 후 전송하기"}
+              {busy ? t("aiReview.sending") : t("aiReview.createAndSend")}
             </button>
             {!deadlineConfirmed && (
-              <p className="mt-1.5 text-center text-[11px] text-gray-400">기한을 확정하면 전송할 수 있어요.</p>
+              <p className="mt-1.5 text-center text-[11px] text-gray-400">{t("aiReview.confirmDeadlineHint")}</p>
             )}
           </div>
         </>
@@ -275,6 +277,25 @@ export function AIReviewPanel({
 }
 
 // AI가 실제로 감지한 모호성 질문 UI. candidates 중 하나를 고르거나 직접 입력할 수 있음 (API.md 10.3절)
+function formatCandidateLabel(c: string): string {
+  // ISO 시각 후보(예: 2026-08-21T09:00:00-04:00)는 읽기 쉽게 변환, 그 외 텍스트는 그대로
+  if (/^\d{4}-\d{2}-\d{2}T/.test(c) && dayjs(c).isValid()) {
+    const zoneAbbr = (() => {
+      const m = c.match(/([+-]\d{2}):?\d{2}$/);
+      if (!m) return "";
+      const off = parseInt(m[1], 10);
+      // 대략적 시간대 라벨 (데모용): 미국동부 -4/-5, 한국 +9
+      if (off === -4) return "New York";
+      if (off === -5) return "New York";
+      if (off === -7 || off === -8) return "LA";
+      if (off === 9) return "Seoul";
+      return `UTC${m[1]}`;
+    })();
+    return `${dayjs(c).format("M/D (ddd) HH:mm")}${zoneAbbr ? ` ${zoneAbbr}` : ""}`;
+  }
+  return c;
+}
+
 function AmbiguityQuestionBlock({
   item,
   onAnswer,
@@ -286,20 +307,26 @@ function AmbiguityQuestionBlock({
 }) {
   const [customAnswer, setCustomAnswer] = useState("");
   const [showCustom, setShowCustom] = useState(false);
+  const t = useT();
   if (!item) return null;
 
   return (
     <div className="mb-3 rounded-lg bg-block-gray p-3">
       <p className="mb-1 text-xs text-gray-400">"{item.span}"</p>
-      <p className="mb-2 text-sm font-medium tracking-[-0.28px] text-heading">{item.reason}</p>
+      <p className="mb-1 text-sm font-medium tracking-[-0.28px] text-heading">{item.reason}</p>
+      {item.suggestion && (
+        <p className="mb-2 text-xs text-gray-500">{item.suggestion}</p>
+      )}
       <div className="flex flex-wrap gap-1.5">
-        {item.candidates.map((c) => (
-          <Pill key={c} onClick={() => onAnswer(c)} disabled={isPending}>
-            {c}
-          </Pill>
-        ))}
+        {item.candidates
+          .filter((c) => c !== "custom")
+          .map((c) => (
+            <Pill key={c} onClick={() => onAnswer(c)} disabled={isPending}>
+              {formatCandidateLabel(c)}
+            </Pill>
+          ))}
         <Pill selected={showCustom} onClick={() => setShowCustom((v) => !v)} disabled={isPending}>
-          직접 입력
+          {t("common.directInput")}
         </Pill>
       </div>
       {showCustom && (
@@ -324,6 +351,7 @@ function AmbiguityQuestionBlock({
 }
 
 function PanelShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  const t = useT();
   return (
     <>
       {/* md 미만: 패널 뒤 어두운 배경 (전체화면 오버레이처럼 동작) */}
@@ -337,11 +365,11 @@ function PanelShell({ children, onClose }: { children: React.ReactNode; onClose:
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="rounded-lg bg-primary-100 px-2 py-1.5 text-xs font-medium text-primary-600">
-              AI 검토
+              {t("aiReview.badge")}
             </span>
-            <span className="text-base font-medium tracking-[-0.32px] text-heading">공동 이해 준비</span>
+            <span className="text-base font-medium tracking-[-0.32px] text-heading">{t("aiReview.title")}</span>
           </div>
-          <button onClick={onClose} aria-label="닫기" className="text-label hover:opacity-70">
+          <button onClick={onClose} aria-label={t("common.close")} className="text-label hover:opacity-70">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M19.0001 1L1 19.0001" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M1 1L19.0001 19.0001" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />

@@ -1,22 +1,21 @@
 import { useState } from "react";
 import type { UnderstandingCard, CardResponseType } from "@/types/understandingCard";
 import { useRespondToCard } from "../hooks/useCardState";
+import { useT } from "@/shared/i18n/i18n";
 import { DeadlineProposalForm } from "./DeadlineProposalForm";
 import { ClarificationForm } from "./ClarificationForm";
 
-const OPTIONS: Array<{ type: CardResponseType; label: string }> = [
-  { type: "AGREE", label: "이해한 내용이 맞습니다." },
-  { type: "REQUEST_DEADLINE_CHANGE", label: "기한 조정이 필요합니다." },
-  { type: "REQUEST_CLARIFICATION", label: "요청 결과가 불명확합니다." },
+const OPTIONS: Array<{ type: CardResponseType; labelKey: string }> = [
+  { type: "AGREE", labelKey: "resp.agree" },
+  { type: "REQUEST_DEADLINE_CHANGE", labelKey: "resp.requestDeadline" },
+  { type: "REQUEST_CLARIFICATION", labelKey: "resp.requestClarification" },
 ];
 
-const CONFIRMED_LABEL: Record<CardResponseType, string> = {
-  AGREE: "이해했습니다",
-  REQUEST_DEADLINE_CHANGE: "기한 조정 요청함",
-  REQUEST_CLARIFICATION: "설명 요청함",
+const CONFIRMED_LABEL_KEY: Record<CardResponseType, string> = {
+  AGREE: "resp.agreed",
+  REQUEST_DEADLINE_CHANGE: "resp.deadlineRequested",
+  REQUEST_CLARIFICATION: "resp.clarificationRequested",
 };
-
-const AGREE_MESSAGE = "이해한 내용이 맞습니다. 지금 바로 착수할게요.";
 
 // 응답이 확정되면 대화에 남길 말풍선 텍스트를 부모(ConversationPage)로 올려보냄
 export function ResponseButtonGroup({
@@ -30,6 +29,7 @@ export function ResponseButtonGroup({
   senderZone?: string;
   onResponded?: (bubbleText: string) => void;
 }) {
+  const t = useT();
   const [selected, setSelected] = useState<CardResponseType | null>(null);
   const respond = useRespondToCard(card.id);
 
@@ -46,7 +46,7 @@ export function ResponseButtonGroup({
     setSelected("AGREE");
     respond.mutate(
       { type: "AGREE", comment: null },
-      { onSuccess: () => onResponded?.(AGREE_MESSAGE) },
+      { onSuccess: () => onResponded?.(t("resp.agreeMessage")) },
     );
   };
 
@@ -58,8 +58,8 @@ export function ResponseButtonGroup({
           <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-xs text-white">
             ✓
           </span>
-          <span className="font-medium">{CONFIRMED_LABEL[confirmedType]}</span>
-          <span className="text-label">· 이 revision에는 다시 응답할 수 없어요</span>
+          <span className="font-medium">{t(CONFIRMED_LABEL_KEY[confirmedType])}</span>
+          <span className="text-label">{t("resp.cannotRespondAgain")}</span>
         </div>
       ) : (
         <div className="flex gap-2">
@@ -74,7 +74,7 @@ export function ResponseButtonGroup({
                   : "border-gray-200 text-gray-500 hover:border-gray-300"
               } ${isLocked ? "cursor-not-allowed opacity-50" : ""}`}
             >
-              {opt.label}
+              {t(opt.labelKey)}
             </button>
           ))}
         </div>

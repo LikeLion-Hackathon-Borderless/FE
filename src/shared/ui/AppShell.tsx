@@ -1,3 +1,4 @@
+import { useT } from "@/shared/i18n/i18n";
 import { useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useConversationList } from "@/features/conversation/hooks/useConversations";
@@ -16,6 +17,7 @@ import { DittoLogo } from "./DittoLogo";
 // md 미만(태블릿 세로/폰)에서는 사이드바를 화면 밖으로 숨기고, 상단 햄버거 버튼으로
 // 슬라이드인 드로어로 열고 닫는다. 대화방 이동 시 자동으로 드로어를 닫는다.
 export function AppShell() {
+  const t = useT();
   // 새로고침 시 토큰은 남아있는데 user(표시용 이름 등)가 비어보이는 문제 방지
   useHydrateAuth();
 
@@ -48,7 +50,7 @@ export function AppShell() {
         {/* 햄버거: md 미만에서만 노출 */}
         <button
           onClick={() => setSidebarOpen(true)}
-          aria-label="메뉴 열기"
+          aria-label={t("nav.menu")}
           className="-ml-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 md:hidden"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -61,8 +63,8 @@ export function AppShell() {
         </div>
 
         <nav className="ml-auto flex gap-1">
-          <TopTab to="/" active={!onAgreementLog}>대화</TopTab>
-          <TopTab to="/agreement-log" active={onAgreementLog}>합의 기록</TopTab>
+          <TopTab to="/" active={!onAgreementLog}>{t("nav.conversations")}</TopTab>
+          <TopTab to="/agreement-log" active={onAgreementLog}>{t("nav.agreementLog")}</TopTab>
         </nav>
       </header>
 
@@ -85,19 +87,19 @@ export function AppShell() {
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 flex-shrink-0 rounded-full bg-gray-200" />
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
-              {workspaceDetail.data?.name ?? "워크스페이스"}
+              {workspaceDetail.data?.name ?? t("nav.workspace")}
             </span>
             {workspaceId && (
               <button
                 onClick={() => setInviteModalOpen(true)}
                 className="flex-shrink-0 rounded px-1.5 py-1 text-xs text-primary-600 hover:bg-primary-50"
               >
-                초대
+                {t("nav.invite")}
               </button>
             )}
           </div>
 
-          <Section title="다이렉트 메시지">
+          <Section title={t("nav.directMessages")}>
             {dms.map((c) => (
               <NavLink
                 key={c.id}
@@ -129,7 +131,7 @@ export function AppShell() {
           onClick={handleLogout}
           className="flex-shrink-0 rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-50 hover:text-gray-600"
         >
-          로그아웃
+          {t("nav.logout")}
         </button>
       </div>
 

@@ -1,3 +1,4 @@
+import { useT } from "@/shared/i18n/i18n";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import dayjs from "dayjs";
@@ -23,6 +24,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 export function ConversationPage() {
+  const t = useT();
   const { conversationId } = useParams<{ conversationId: string }>();
   const queryClient = useQueryClient();
 
@@ -175,7 +177,7 @@ export function ConversationPage() {
   };
 
   if (!conversationId) {
-    return <p className="p-4 text-sm text-gray-400">대화를 선택하세요.</p>;
+    return <p className="p-4 text-sm text-gray-400">{t("conv.selectOne")}</p>;
   }
 
   return (
@@ -188,7 +190,7 @@ export function ConversationPage() {
             {zoneShort(partner.tz)} {dayjs().tz(partner.tz).format("HH:mm")}
           </span>
           <span className="hidden flex-shrink-0 whitespace-nowrap rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 xs:inline-block">
-            {partnerOffHours ? "근무 외 시간" : "근무 시간"}
+            {partnerOffHours ? t("conv.offHours") : t("conv.workHours")}
           </span>
 
           {/* 데모 전용: 시점 전환. USE_MOCK일 때만 노출 → 실배포(USE_MOCK=false)면 자동 숨김.
@@ -286,6 +288,8 @@ export function ConversationPage() {
           originalContent={draftContent}
           recipientName={other?.displayName}
           recipientTimeZoneId={other?.timeZoneId}
+          senderName={viewerSelf.name}
+          senderTimeZoneId={viewerSelf.tz}
           onClose={() => setActiveReview(null)}
           onSent={handleReviewSent}
         />
