@@ -37,6 +37,16 @@ export function ConversationPage() {
   const other = conversationsQuery.data?.find((c) => c.id === conversationId)?.otherParticipant;
   const authUser = useAuthStore((s) => s.user);
 
+  // 대화방에 들어오면 읽음 처리 - 이전엔 markAsRead API가 정의만 되어있고 어디서도
+  // 호출을 안 해서, 대화목록의 unreadCount 뱃지가 한번 쌓이면 영원히 안 줄어드는 문제가 있었음.
+  useEffect(() => {
+    if (!conversationId) return;
+    conversationService.markAsRead(conversationId).then(() => {
+      // 대화목록의 unreadCount를 다시 불러와서 뱃지를 갱신
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    });
+  }, [conversationId, queryClient]);
+
   // 두 데모 정체성: 이서연(로그인 유저, 근무시간 실데이터) / Alex(대화 상대, 계약에 근무시간 없어 기본값)
   const ME = {
     id: authUser?.id ?? "mock-user-self",
@@ -233,8 +243,6 @@ export function ConversationPage() {
           originalContent={draftContent}
           recipientName={other?.displayName}
           recipientTimeZoneId={other?.timeZoneId}
-          senderName={ME.name}
-          senderTimeZoneId={ME.tz}
           onClose={() => setActiveReview(null)}
           onSent={handleReviewSent}
         />
