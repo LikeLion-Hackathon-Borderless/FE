@@ -205,30 +205,55 @@ export function ConversationPage() {
         </header>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
-          {messagesQuery.data?.messages.map((m) => (
-            <MessageBubble key={m.id} message={m} isMine={m.sender.id === viewerId} />
-          ))}
+          {/* 카드는 그게 속한 메시지(messageId)를 찾아서 그 메시지 바로 뒤에 끼워 넣는다.
+              이전엔 메시지 목록을 전부 그린 다음 카드를 항상 맨 마지막에 고정으로 붙였어서,
+              카드 생성 후 새 메시지를 보낼 때마다 카드가 계속 아래로 밀려나는 버그가 있었음
+              (의도한 동작이 아니었음 - 카드는 그 메시지 위치에 고정되어 있어야 자연스러움). */}
+          {messagesQuery.data?.messages.map((m) => {
+            const supersededForThisMessage = supersededCards.filter((c) => c.messageId === m.id);
+            const activeForThisMessage =
+              cardQuery.data && cardQuery.data.messageId === m.id ? cardQuery.data : null;
 
-          {/* 카드 위치: 발신자로 보는 사람=오른쪽, 수신자로 보는 사람=왼쪽 (말풍선과 동일 정렬).
-              전엔 viewingAsMe(데모토글 전용, 실서버에선 항상 true로 고정)를 그대로 써서
-              실서버에선 항상 오른쪽에만 붙는 버그가 있었음. 위에서 이미 mock/실서버 모두
-              올바르게 계산해둔 cardViewerRole을 그대로 재사용한다. */}
-          {supersededCards.map((c) => (
-            <div key={`sup-${c.id}-${c.revision}`} className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}>
-              <UnderstandingCard card={c} viewerRole={cardViewerRole} superseded />
-            </div>
-          ))}
+            return (
+              <div key={m.id} className="space-y-4">
+                <MessageBubble message={m} isMine={m.sender.id === viewerId} />
 
-          {cardQuery.data && (
-            <div className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}>
-              <UnderstandingCard
-                card={cardQuery.data}
-                viewerRole={cardViewerRole}
-                onResponded={handleCardResponded}
-                onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
-              />
-            </div>
-          )}
+                {supersededForThisMessage.map((c) => (
+                  <div
+                    key={`sup-${c.id}-${c.revision}`}
+                    className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}
+                  >
+                    <UnderstandingCard card={c} viewerRole={cardViewerRole} superseded />
+                  </div>
+                ))}
+
+                {activeForThisMessage && (
+                  <div className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}>
+                    <UnderstandingCard
+                      card={activeForThisMessage}
+                      viewerRole={cardViewerRole}
+                      onResponded={handleCardResponded}
+                      onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* 방어적 처리: 카드가 속한 메시지가 아직 목록에 안 로딩됐거나 못 찾은 경우
+              (polling 타이밍 등) 카드 자체가 화면에서 통째로 사라지지 않도록 마지막에 표시 */}
+          {cardQuery.data &&
+            !messagesQuery.data?.messages.some((m) => m.id === cardQuery.data!.messageId) && (
+              <div className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}>
+                <UnderstandingCard
+                  card={cardQuery.data}
+                  viewerRole={cardViewerRole}
+                  onResponded={handleCardResponded}
+                  onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
+                />
+              </div>
+            )}
         </div>
 
         <MessageInput
