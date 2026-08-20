@@ -37,18 +37,29 @@ export function ConversationPage() {
   const other = conversationsQuery.data?.find((c) => c.id === conversationId)?.otherParticipant;
   const authUser = useAuthStore((s) => s.user);
 
-  // 두 데모 정체성: 이서연(로그인 유저, 근무시간 실데이터) / Alex(대화 상대, 계약에 근무시간 없어 기본값)
-  const ME = {
-    id: authUser?.id ?? "mock-user-self",
-    name: authUser?.displayName ?? "이서연",
+  // 대화방에 들어오면 읽음 처리 - 이전엔 markAsRead API가 정의만 되어있고 어디서도
+  // 호출을 안 해서, 대화목록의 unreadCount 뱃지가 한번 쌓이면 영원히 안 줄어드는 문제가 있었음.
+  useEffect(() => {
+    if (!conversationId) return;
+    conversationService.markAsRead(conversationId).then(() => {
+      // 대화목록의 unreadCount를 다시 불러와서 뱃지를 갱신
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    });
+  }, [conversationId, queryClient]);
+
+  // 로그인한 나 / 대화 상대. authUser·other가 아직 로딩 중이면 잠깐 기본값을 씀
+  // (로딩 끝나면 실제 데이터로 바로 교체됨 - 이 기본값 자체가 화면에 오래 남으면 안 됨).
+  const viewerSelf = {
+    id: authUser?.id ?? "unknown-self",
+    name: authUser?.displayName ?? "나",
     tz: authUser?.timeZoneId ?? "Asia/Seoul",
     workStart: authUser?.workStart,
     workEnd: authUser?.workEnd,
     workDays: authUser?.workDays,
   };
-  const ALEX = {
-    id: other?.id ?? "mock-alex",
-    name: other?.displayName ?? "Alex",
+  const viewerPartner = {
+    id: other?.id ?? "unknown-partner",
+    name: other?.displayName ?? "상대방",
     tz: other?.timeZoneId ?? "America/Los_Angeles",
     workStart: undefined,
     workEnd: undefined,
@@ -56,23 +67,23 @@ export function ConversationPage() {
   };
 
   // 현재 보는 시점. 기본=로그인 유저(=배포 정답). 토글은 데모 전용 (실배포 제거).
-  const [viewerId, setViewerId] = useState<string>(ME.id);
+  const [viewerId, setViewerId] = useState<string>(viewerSelf.id);
 
-  // useState(ME.id)는 최초 렌더 시점에만 평가됨. 로그인 유저 정보(authUser)가
-  // 그 이후에 늦게 로딩 완료되면(흔한 타이밍) viewerId가 임시값("mock-user-self")에
+  // useState(viewerSelf.id)는 최초 렌더 시점에만 평가됨. 로그인 유저 정보(authUser)가
+  // 그 이후에 늦게 로딩 완료되면(흔한 타이밍) viewerId가 임시값("unknown-self")에
   // 고정된 채로 안 바뀌는 버그가 있었음. 그 결과 실제 서버가 보내는 진짜 UUID인
   // sender.id와 viewerId가 서로 안 맞아서, 본인이 보낸 메시지도 "상대방이 보낸 것"으로
-  // 표시(회색)되는 문제가 있었음. authUser.id가 갱신되면 (Alex 시점 데모 토글 중이
+  // 표시(회색)되는 문제가 있었음. authUser.id가 갱신되면 (상대방 시점 데모 토글 중이
   // 아닐 때만) viewerId를 실제 로그인 유저 id로 다시 맞춰준다.
   useEffect(() => {
-    if (authUser?.id && viewerId !== ALEX.id) {
+    if (authUser?.id && viewerId !== viewerPartner.id) {
       setViewerId(authUser.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
 
-  const viewingAsMe = viewerId !== ALEX.id;
-  const partner = viewingAsMe ? ALEX : ME; // 헤더엔 상대가 뜸
+  const viewingAsMe = viewerId !== viewerPartner.id;
+  const partner = viewingAsMe ? viewerPartner : viewerSelf; // 헤더엔 상대가 뜸
   const partnerOffHours = !isWithinWorkHours(
     partner.tz,
     partner.workStart,
@@ -95,6 +106,13 @@ export function ConversationPage() {
     : cardQuery.data && authUser?.id === cardQuery.data.assignee.userId
       ? "recipient"
       : "sender";
+
+  // 카드 재조정 UI(DeadlineProposalForm/SenderRevisionActions)가 "발신자 시각/이름"을
+  // 보여줄 때 쓸 실제 값. cardViewerRole 기준으로 어느 쪽이 발신자인지 이미 알고 있으므로,
+  // 카드에는 없는 발신자 정보를 viewerSelf/viewerPartner에서 그대로 가져온다
+  // (이전엔 이 정보가 안 내려가서 컴포넌트들이 "이서연"/"Asia/Seoul"로 하드코딩되어 있었음).
+  const cardSenderName = cardViewerRole === "sender" ? viewerSelf.name : viewerPartner.name;
+  const cardSenderTimeZoneId = cardViewerRole === "sender" ? viewerSelf.tz : viewerPartner.tz;
 
   // activeCardId는 컴포넌트 로컬 상태라서, 다른 탭 갔다가 돌아오면(리마운트) 초기화되어
   // 방금 만든 카드가 사라지는 것처럼 보이는 문제가 있었음. 서버 응답(GET /messages)에
@@ -178,46 +196,81 @@ export function ConversationPage() {
           {USE_MOCK && (
             <div className="order-last flex w-full items-center gap-1 rounded-md bg-white p-0.5 text-xs sm:order-none sm:ml-auto sm:w-auto">
               <button
-                onClick={() => setViewerId(ME.id)}
+                onClick={() => setViewerId(viewerSelf.id)}
                 className={`flex-1 rounded px-2 py-1 sm:flex-none ${viewingAsMe ? "bg-primary-500 text-white" : "text-gray-500"}`}
               >
-                {ME.name} 시점
+                {viewerSelf.name} 시점
               </button>
               <button
-                onClick={() => setViewerId(ALEX.id)}
+                onClick={() => setViewerId(viewerPartner.id)}
                 className={`flex-1 rounded px-2 py-1 sm:flex-none ${!viewingAsMe ? "bg-primary-500 text-white" : "text-gray-500"}`}
               >
-                {ALEX.name} 시점
+                {viewerPartner.name} 시점
               </button>
             </div>
           )}
         </header>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
-          {messagesQuery.data?.messages.map((m) => (
-            <MessageBubble key={m.id} message={m} isMine={m.sender.id === viewerId} />
-          ))}
+          {/* 카드는 그게 속한 메시지(messageId)를 찾아서 그 메시지 바로 뒤에 끼워 넣는다.
+              이전엔 메시지 목록을 전부 그린 다음 카드를 항상 맨 마지막에 고정으로 붙였어서,
+              카드 생성 후 새 메시지를 보낼 때마다 카드가 계속 아래로 밀려나는 버그가 있었음
+              (의도한 동작이 아니었음 - 카드는 그 메시지 위치에 고정되어 있어야 자연스러움). */}
+          {messagesQuery.data?.messages.map((m) => {
+            const supersededForThisMessage = supersededCards.filter((c) => c.messageId === m.id);
+            const activeForThisMessage =
+              cardQuery.data && cardQuery.data.messageId === m.id ? cardQuery.data : null;
 
-          {/* 카드 위치: 발신자로 보는 사람=오른쪽, 수신자로 보는 사람=왼쪽 (말풍선과 동일 정렬).
-              전엔 viewingAsMe(데모토글 전용, 실서버에선 항상 true로 고정)를 그대로 써서
-              실서버에선 항상 오른쪽에만 붙는 버그가 있었음. 위에서 이미 mock/실서버 모두
-              올바르게 계산해둔 cardViewerRole을 그대로 재사용한다. */}
-          {supersededCards.map((c) => (
-            <div key={`sup-${c.id}-${c.revision}`} className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}>
-              <UnderstandingCard card={c} viewerRole={cardViewerRole} superseded />
-            </div>
-          ))}
+            return (
+              <div key={m.id} className="space-y-4">
+                <MessageBubble message={m} isMine={m.sender.id === viewerId} />
 
-          {cardQuery.data && (
-            <div className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}>
-              <UnderstandingCard
-                card={cardQuery.data}
-                viewerRole={cardViewerRole}
-                onResponded={handleCardResponded}
-                onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
-              />
-            </div>
-          )}
+                {supersededForThisMessage.map((c) => (
+                  <div
+                    key={`sup-${c.id}-${c.revision}`}
+                    className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}
+                  >
+                    <UnderstandingCard
+                      card={c}
+                      viewerRole={cardViewerRole}
+                      senderName={cardSenderName}
+                      senderTimeZoneId={cardSenderTimeZoneId}
+                      superseded
+                    />
+                  </div>
+                ))}
+
+                {activeForThisMessage && (
+                  <div className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}>
+                    <UnderstandingCard
+                      card={activeForThisMessage}
+                      viewerRole={cardViewerRole}
+                      senderName={cardSenderName}
+                      senderTimeZoneId={cardSenderTimeZoneId}
+                      onResponded={handleCardResponded}
+                      onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* 방어적 처리: 카드가 속한 메시지가 아직 목록에 안 로딩됐거나 못 찾은 경우
+              (polling 타이밍 등) 카드 자체가 화면에서 통째로 사라지지 않도록 마지막에 표시 */}
+          {cardQuery.data &&
+            !messagesQuery.data?.messages.some((m) => m.id === cardQuery.data!.messageId) && (
+              <div className={`flex ${cardViewerRole === "sender" ? "justify-end" : "justify-start"}`}>
+                <UnderstandingCard
+                  card={cardQuery.data}
+                  viewerRole={cardViewerRole}
+                  senderName={cardSenderName}
+                  senderTimeZoneId={cardSenderTimeZoneId}
+                  onResponded={handleCardResponded}
+                  onRevised={(old) => setSupersededCards((prev) => [...prev, old])}
+                />
+              </div>
+            )}
         </div>
 
         <MessageInput
@@ -233,8 +286,6 @@ export function ConversationPage() {
           originalContent={draftContent}
           recipientName={other?.displayName}
           recipientTimeZoneId={other?.timeZoneId}
-          senderName={ME.name}
-          senderTimeZoneId={ME.tz}
           onClose={() => setActiveReview(null)}
           onSent={handleReviewSent}
         />

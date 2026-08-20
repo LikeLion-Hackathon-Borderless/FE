@@ -146,8 +146,8 @@ function TopTab({ to, active, children }: { to: string; active: boolean; childre
       to={to}
       className={`whitespace-nowrap rounded px-2.5 py-1.5 text-xs font-medium sm:px-3 sm:text-sm ${
         active
-          ? "border border-primary-500 bg-[#DEF9F9] text-primary-600"
-          : "bg-pill-gray text-[#9299A3] hover:brightness-95"
+          ? "border border-primary-500 bg-primary-50 text-primary-600"
+          : "bg-pill-gray text-label hover:brightness-95"
       }`}
     >
       {children}

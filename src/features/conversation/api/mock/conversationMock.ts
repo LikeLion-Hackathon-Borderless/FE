@@ -8,6 +8,10 @@ import type {
 
 export const DEMO_CONVERSATION_ID = "mock-conversation-alex";
 
+// 안읽음 개수도 실제처럼 흉내냄 - markAsRead 호출 전까지는 2로 유지, 호출하면 0으로.
+// (이전엔 항상 0으로 고정되어 있어서 "읽어도 숫자 안 없어짐" 버그를 mock에서 재현할 수 없었음)
+let mockUnreadCount = 2;
+
 const messageStore: Record<string, MessageResponse[]> = {
   [DEMO_CONVERSATION_ID]: [
     {
@@ -50,7 +54,7 @@ function getConversationSummary(): ConversationSummary {
     latestMessage: latest
       ? { id: latest.id, senderId: latest.sender.id, content: latest.content, sentAt: latest.sentAt }
       : null,
-    unreadCount: 0,
+    unreadCount: mockUnreadCount,
     lastActivityAt: latest?.sentAt ?? new Date().toISOString(),
   };
 }
@@ -107,5 +111,8 @@ export const conversationMock = {
     return mockDelay(message, 300);
   },
 
-  markAsRead: (_conversationId: string) => mockDelay(undefined, 100),
+  markAsRead: (_conversationId: string) => {
+    mockUnreadCount = 0;
+    return mockDelay(undefined, 100);
+  },
 };

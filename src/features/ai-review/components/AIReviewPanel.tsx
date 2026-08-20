@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import dayjs from "dayjs";
-import type { AiReview, AmbiguityItem } from "@/types/aiReview";
+import type { AiReview } from "@/types/aiReview";
 import type { MessageResponse } from "@/types/conversation";
 import { DateTimePicker } from "@/shared/ui/DateTimePicker";
 import { ErrorCode } from "@/shared/api/errorCodes";
 import { zoneShort } from "@/shared/utils/timezoneLabel";
-import { useConfirmAIReview, useSendAIReview, useAnswerAIReview } from "../hooks/useAIReview";
+import { useConfirmAIReview, useSendAIReview, useAnswerAmbiguity } from "../hooks/useAIReview";
+import { LabelValueRow } from "@/shared/ui/LabelValueRow";
 
 interface Props {
   review: AiReview;
@@ -39,11 +40,8 @@ function formatInZone(value: string | null | undefined, zone: string, fallback =
   return dayjs(value).tz(zone).format("M/D HH:mm");
 }
 
-// C-4 의미 모호성 "조금 더 고민해보면?" 두 갈래 (기획안 3-1 step5)
-const INTENT_OPTIONS = ["현재 방향 유지 + 세부만 보완", "방향 자체를 재검토 요청"];
-
 export function AIReviewPanel({
-  review: reviewProp,
+  review: initialReview,
   originalContent,
   onClose,
   onSent,
@@ -52,17 +50,17 @@ export function AIReviewPanel({
   senderTimeZoneId,
   senderName,
 }: Props) {
-  // /answers로 세션이 진행되면 review가 갱신되므로 로컬 상태로 보유
-  const [review, setReview] = useState(reviewProp);
-  useEffect(() => setReview(reviewProp), [reviewProp]);
-  const answerReview = useAnswerAIReview();
+  // 이전엔 review를 prop 그대로만 읽었는데, AI 모호성 질문에 답변할 때마다 서버가 새
+  // AiReview(다음 질문 또는 DONE)를 돌려주므로 그 최신 상태를 들고 있어야 함. prop은
+  // 최초 1회 초기값으로만 쓰고, 그 이후는 이 로컬 상태를 기준으로 렌더링한다.
+  const [review, setReview] = useState<AiReview>(initialReview);
   const sf = review.structuredFields;
 
   const senderZone = senderTimeZoneId ?? parseZone(sf.deadline.senderLocal) ?? "Asia/Seoul";
   const recipientZone =
     recipientTimeZoneId ?? parseZone(sf.deadline.recipientLocal) ?? "America/Los_Angeles";
   const recipientLabel = recipientName ?? sf.assigneeUserId.value ?? "수신자";
-  const senderLabel = senderName ?? "발신자";
+  const senderLabel = senderName ?? "이서연";
 
   // C-3: AI 후보를 넣어두되 "자동 확정 금지" — 명시 확정해야 전송 가능.
   const aiCandidate = sf.deadline.value ?? "";
@@ -72,14 +70,27 @@ export function AIReviewPanel({
   // AI가 시각을 못 정했으면(hasAiCandidate=false) 처음부터 직접입력 패널을 열어준다
   const [showPicker, setShowPicker] = useState(!hasAiCandidate);
 
-  // 의도: AI 추정값을 미리 하이라이트하되 사용자가 바꿀 수 있음
-  const [intent, setIntent] = useState<number>(sf.expectedOutcome.value?.includes("재검토") ? 1 : 0);
-
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const confirmReview = useConfirmAIReview();
   const sendReview = useSendAIReview();
+  const answerAmbiguity = useAnswerAmbiguity();
   const busy = confirmReview.isPending || sendReview.isPending;
+
+  // AI가 원문에서 모호하다고 판단한 부분에 실시간으로 묻는 질문. 이전엔 메시지 내용과
+  // 무관하게 항상 똑같은 가짜 질문("조금 더 고민해보면?")이 고정으로 떴었는데,
+  // 이제 서버가 실제로 만들어주는 agentSession을 그대로 반영한다 (API.md 10.1/10.3절).
+  const pendingQuestion = review.agentSession?.status === "INTERRUPT" ? review.agentSession.item : null;
+
+  const handleAnswer = async (answer: string) => {
+    setErrorMsg(null);
+    try {
+      const updated = await answerAmbiguity.mutateAsync({ reviewId: review.id, req: { answer } });
+      setReview(updated);
+    } catch {
+      setErrorMsg("답변 처리에 실패했어요. 잠시 후 다시 시도해 주세요.");
+    }
+  };
 
   const warning = review.warnings.find((w) => w.code === ErrorCode.OUTSIDE_RECIPIENT_WORK_HOURS);
   // suggestedDeadline도 형식이 이상할 수 있으니 검증 후에만 파싱 (안 그러면 dayjs().toISOString()에서 같은 종류의 에러가 날 수 있음)
@@ -103,7 +114,9 @@ export function AIReviewPanel({
     setErrorMsg(null);
   };
 
-  const canSend = !!sf.task.value && !!deadline && deadlineConfirmed && !busy;
+  // AI 질문에 아직 답 안 한 게 남아있으면 확정/전송 자체를 막는다 - 질문을 다 풀어야
+  // structuredFields가 최종값으로 안정되므로.
+  const canSend = !pendingQuestion && !!sf.task.value && !!deadline && deadlineConfirmed && !busy;
 
   const handleSend = async () => {
     setErrorMsg(null);
@@ -115,7 +128,7 @@ export function AIReviewPanel({
           task: sf.task.value ?? "",
           assigneeUserId: sf.assigneeUserId.value ?? "",
           deadline,
-          expectedOutcome: sf.expectedOutcome.value ?? INTENT_OPTIONS[intent],
+          expectedOutcome: sf.expectedOutcome.value ?? "",
           confirmedEvidenceIds: review.evidence.map((e) => e.attachmentId),
           confirmed: true,
         },
@@ -146,34 +159,13 @@ export function AIReviewPanel({
     );
   }
 
-  // 모호성 확인 단계 (실서버 agentSession): AI가 애매하다고 판단한 부분을 실제 질문/후보로 물어봄.
-  // 후보를 고르면 /answers로 보내고 DONE이 될 때까지 반복. (API.md 10.3)
-  const agent = review.agentSession;
-  if (agent?.status === "INTERRUPT" && agent.item) {
-    return (
-      <PanelShell onClose={onClose}>
-        <AmbiguityStep
-          item={agent.item}
-          step={agent.step ?? undefined}
-          total={agent.total ?? undefined}
-          zone={senderZone}
-          busy={answerReview.isPending}
-          onAnswer={async (answer) => {
-            const updated = await answerReview.mutateAsync({ reviewId: review.id, req: { answer } });
-            setReview(updated);
-          }}
-        />
-      </PanelShell>
-    );
-  }
-
   return (
     <PanelShell onClose={onClose}>
       {/* 상단 읽기전용 요약 */}
       <dl className="mb-4 flex flex-col gap-5 text-sm">
-        <SummaryRow label="업무" value={sf.task.value ?? "-"} />
-        <SummaryRow label="담당자" value={recipientLabel} />
-        <SummaryRow
+        <LabelValueRow label="업무" value={sf.task.value ?? "-"} />
+        <LabelValueRow label="담당자" value={recipientLabel} />
+        <LabelValueRow
           label="기한"
           value={
             deadlineConfirmed
@@ -182,100 +174,152 @@ export function AIReviewPanel({
           }
           danger={!deadlineConfirmed}
         />
-        <SummaryRow label="근거" value={review.evidence[0]?.fileName ?? "최근 대화"} />
+        <LabelValueRow label="근거" value={review.evidence[0]?.fileName ?? "최근 대화"} />
       </dl>
 
       {/* 요약/질문 구분선 (시안 #C8D2DF) */}
-      <div className="mb-4 h-px bg-[#C8D2DF]" />
+      <div className="mb-4 h-px bg-divider" />
 
-      {/* 질문블록 A — 기한 확정 (C-3) */}
-      <QuestionBlock message={'"기한"의 정확한 기준 시각이 필요해요. 어떤 시간으로 확정할까요?'}>
-        {hasAiCandidate ? (
-          <Pill
-            selected={deadlineConfirmed && deadline === aiCandidate}
-            onClick={() => pickDeadline(aiCandidate)}
-          >
-            {formatInZone(aiCandidate, senderZone)} {senderZone}
+      {/* AI 모호성 질문 - 서버가 실제로 이 메시지에서 모호하다고 판단한 부분만 동적으로 뜬다.
+          질문이 남아있는 동안은 기한 확정/전송 UI를 아직 안 보여준다 (다음 질문이 또 있을 수 있어서). */}
+      {pendingQuestion ? (
+        <AmbiguityQuestionBlock
+          item={pendingQuestion}
+          onAnswer={handleAnswer}
+          isPending={answerAmbiguity.isPending}
+        />
+      ) : (
+        <>
+          {/* 질문블록 — 기한 확정 (C-3) */}
+          <QuestionBlock message={"정확한 마감 시각이 필요해요. 어떤 시간으로 확정할까요?"}>
+            {hasAiCandidate ? (
+              <Pill
+                selected={deadlineConfirmed && deadline === aiCandidate}
+                onClick={() => pickDeadline(aiCandidate)}
+              >
+                {formatInZone(aiCandidate, senderZone)} {senderZone}
+              </Pill>
+            ) : (
+              // AI가 확신 있는 값을 못 찾은 경우 (API.md E09) - 추측값을 보여주는 대신 직접입력을 유도
+              <p className="text-xs text-gray-400">AI가 시각을 특정하지 못했어요. 직접 입력해주세요.</p>
+            )}
+            <Pill selected={showPicker} onClick={() => setShowPicker((v) => !v)}>
+              직접 입력
+            </Pill>
+            {showPicker && (
+              <div className="mt-2 w-full">
+                <DateTimePicker
+                  value={deadline || aiCandidate}
+                  onChange={pickDeadline}
+                  editZone={senderZone}
+                  editLabel={senderLabel}
+                  previewZone={recipientZone}
+                  previewLabel={recipientLabel}
+                  previewOutsideHours={isConflicting}
+                />
+              </div>
+            )}
+          </QuestionBlock>
+
+          {/* 근무시간 충돌 (C-6 / E04) — 충돌 중이면 경고+대안, 대안 선택하면 조정됨 표시 (B안) */}
+          {showConflictCard &&
+            (isConflicting ? (
+              <div className="mb-3 rounded-lg bg-white p-3">
+                <p className="mb-1 text-sm font-medium tracking-[-0.28px] text-warn">근무 시간 충돌</p>
+                <p className="mb-2.5 text-sm tracking-[-0.28px] text-heading">{warning?.message}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {hasAiCandidate && (
+                    <Pill selected onClick={() => pickDeadline(aiCandidate)}>
+                      {formatInZone(aiCandidate, senderZone)} {senderZone}
+                    </Pill>
+                  )}
+                  {altInstant && (
+                    <Pill onClick={() => pickDeadline(altInstant)}>
+                      대안: {formatInZone(altInstant, recipientZone)} {zoneShort(recipientZone)}
+                    </Pill>
+                  )}
+                  <Pill disabled title="P1 범위">
+                    예약 전송
+                  </Pill>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-3 flex items-center gap-2 rounded-lg bg-white p-3">
+                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-xs text-white">
+                  ✓
+                </span>
+                <p className="text-sm tracking-[-0.28px] text-heading">
+                  {formatInZone(deadline, recipientZone)} {zoneShort(recipientZone)}로 조정됨 · Alex 근무시간 내
+                </p>
+              </div>
+            ))}
+
+          {errorMsg && <p className="mb-3 rounded-md bg-warn/10 p-2.5 text-xs text-warn">{errorMsg}</p>}
+
+          <div className="pt-1">
+            <button
+              onClick={handleSend}
+              disabled={!canSend}
+              className="w-full rounded-pill bg-ink px-3 py-2 text-xl font-medium tracking-[-0.4px] text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {busy ? "전송 중…" : "카드 생성 후 전송하기"}
+            </button>
+            {!deadlineConfirmed && (
+              <p className="mt-1.5 text-center text-[11px] text-gray-400">기한을 확정하면 전송할 수 있어요.</p>
+            )}
+          </div>
+        </>
+      )}
+    </PanelShell>
+  );
+}
+
+// AI가 실제로 감지한 모호성 질문 UI. candidates 중 하나를 고르거나 직접 입력할 수 있음 (API.md 10.3절)
+function AmbiguityQuestionBlock({
+  item,
+  onAnswer,
+  isPending,
+}: {
+  item: NonNullable<AiReview["agentSession"]>["item"];
+  onAnswer: (answer: string) => void;
+  isPending: boolean;
+}) {
+  const [customAnswer, setCustomAnswer] = useState("");
+  const [showCustom, setShowCustom] = useState(false);
+  if (!item) return null;
+
+  return (
+    <div className="mb-3 rounded-lg bg-block-gray p-3">
+      <p className="mb-1 text-xs text-gray-400">"{item.span}"</p>
+      <p className="mb-2 text-sm font-medium tracking-[-0.28px] text-heading">{item.reason}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {item.candidates.map((c) => (
+          <Pill key={c} onClick={() => onAnswer(c)} disabled={isPending}>
+            {c}
           </Pill>
-        ) : (
-          // AI가 확신 있는 값을 못 찾은 경우 (API.md E09) - 추측값을 보여주는 대신 직접입력을 유도
-          <p className="text-xs text-gray-400">AI가 시각을 특정하지 못했어요. 직접 입력해주세요.</p>
-        )}
-        <Pill selected={showPicker} onClick={() => setShowPicker((v) => !v)}>
+        ))}
+        <Pill selected={showCustom} onClick={() => setShowCustom((v) => !v)} disabled={isPending}>
           직접 입력
         </Pill>
-        {showPicker && (
-          <div className="mt-2 w-full">
-            <DateTimePicker
-              value={deadline || aiCandidate}
-              onChange={pickDeadline}
-              editZone={senderZone}
-              editLabel={senderLabel}
-              previewZone={recipientZone}
-              previewLabel={recipientLabel}
-              previewOutsideHours={isConflicting}
-            />
-          </div>
-        )}
-      </QuestionBlock>
-
-      {/* 질문블록 B — 의도 확정 (C-4) */}
-      <QuestionBlock message={'"조금 더 고민해 보면?" — 두 가지로 읽힙니다. 실제 의도를 선택해주세요.'}>
-        {INTENT_OPTIONS.map((opt, i) => (
-          <Pill key={i} selected={intent === i} onClick={() => setIntent(i)}>
-            {opt}
-          </Pill>
-        ))}
-      </QuestionBlock>
-
-      {/* 근무시간 충돌 (C-6 / E04) — 충돌 중이면 경고+대안, 대안 선택하면 조정됨 표시 (B안) */}
-      {showConflictCard &&
-        (isConflicting ? (
-          <div className="mb-3 rounded-lg bg-white p-3">
-            <p className="mb-1 text-sm font-medium tracking-[-0.28px] text-warn">근무 시간 충돌</p>
-            <p className="mb-2.5 text-sm tracking-[-0.28px] text-[#161719]">{warning?.message}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {hasAiCandidate && (
-                <Pill selected onClick={() => pickDeadline(aiCandidate)}>
-                  {formatInZone(aiCandidate, senderZone)} {senderZone}
-                </Pill>
-              )}
-              {altInstant && (
-                <Pill onClick={() => pickDeadline(altInstant)}>
-                  대안: {formatInZone(altInstant, recipientZone)} {zoneShort(recipientZone)}
-                </Pill>
-              )}
-              <Pill disabled title="P1 범위">
-                예약 전송
-              </Pill>
-            </div>
-          </div>
-        ) : (
-          <div className="mb-3 flex items-center gap-2 rounded-lg bg-white p-3">
-            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-xs text-white">
-              ✓
-            </span>
-            <p className="text-sm tracking-[-0.28px] text-[#161719]">
-              {formatInZone(deadline, recipientZone)} {zoneShort(recipientZone)}로 조정됨 · Alex 근무시간 내
-            </p>
-          </div>
-        ))}
-
-      {errorMsg && <p className="mb-3 rounded-md bg-warn/10 p-2.5 text-xs text-warn">{errorMsg}</p>}
-
-      <div className="pt-1">
-        <button
-          onClick={handleSend}
-          disabled={!canSend}
-          className="w-full rounded-pill bg-ink px-3 py-2 text-xl font-medium tracking-[-0.4px] text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {busy ? "전송 중…" : "카드 생성 후 전송하기"}
-        </button>
-        {!deadlineConfirmed && (
-          <p className="mt-1.5 text-center text-[11px] text-gray-400">기한을 확정하면 전송할 수 있어요.</p>
-        )}
       </div>
-    </PanelShell>
+      {showCustom && (
+        <div className="mt-2 flex gap-2">
+          <input
+            value={customAnswer}
+            onChange={(e) => setCustomAnswer(e.target.value)}
+            placeholder={item.suggestion}
+            className="flex-1 rounded border border-gray-200 px-2 py-1.5 text-sm"
+          />
+          <button
+            onClick={() => customAnswer.trim() && onAnswer(customAnswer.trim())}
+            disabled={isPending || !customAnswer.trim()}
+            className="rounded bg-primary-500 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          >
+            확인
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -292,15 +336,15 @@ function PanelShell({ children, onClose }: { children: React.ReactNode; onClose:
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="rounded-lg bg-primary-100 px-2 py-1.5 text-xs font-medium text-[#148280]">
+            <span className="rounded-lg bg-primary-100 px-2 py-1.5 text-xs font-medium text-primary-600">
               AI 검토
             </span>
-            <span className="text-base font-medium tracking-[-0.32px] text-[#171717]">공동 이해 준비</span>
+            <span className="text-base font-medium tracking-[-0.32px] text-heading">공동 이해 준비</span>
           </div>
-          <button onClick={onClose} aria-label="닫기" className="text-gray-400 hover:opacity-70">
+          <button onClick={onClose} aria-label="닫기" className="text-label hover:opacity-70">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M19.0001 1L1 19.0001" stroke="#9299A3" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M1 1L19.0001 19.0001" stroke="#9299A3" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M19.0001 1L1 19.0001" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M1 1L19.0001 19.0001" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>
@@ -310,19 +354,10 @@ function PanelShell({ children, onClose }: { children: React.ReactNode; onClose:
   );
 }
 
-function SummaryRow({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
-  return (
-    <div className="flex gap-4 text-sm font-medium tracking-[-0.28px]">
-      <dt className="w-14 flex-shrink-0 text-[#9299A3]">{label}</dt>
-      <dd className={danger ? "text-warn" : "text-[#323538]"}>{value}</dd>
-    </div>
-  );
-}
-
 function QuestionBlock({ message, children }: { message: string; children: React.ReactNode }) {
   return (
     <div className="mb-3 rounded-lg bg-block-gray p-3">
-      <p className="mb-2 text-sm font-medium tracking-[-0.28px] text-[#161719]">{message}</p>
+      <p className="mb-2 text-sm font-medium tracking-[-0.28px] text-heading">{message}</p>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
   );
@@ -348,57 +383,10 @@ function Pill({
       disabled={disabled}
       title={title}
       className={`rounded-pill px-3 py-1.5 text-sm font-medium tracking-[-0.28px] transition-colors ${
-        selected ? "bg-primary-500 text-white" : "bg-pill-gray text-[#9299A3] hover:brightness-95"
+        selected ? "bg-primary-500 text-white" : "bg-pill-gray text-label hover:brightness-95"
       } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
       {children}
     </button>
   );
-}
-// 모호성 확인 단계 UI: AI가 던진 실제 질문(item.suggestion)과 후보(item.candidates)를 보여준다.
-function AmbiguityStep({
-  item,
-  step,
-  total,
-  zone,
-  busy,
-  onAnswer,
-}: {
-  item: AmbiguityItem;
-  step?: number;
-  total?: number;
-  zone: string;
-  busy: boolean;
-  onAnswer: (answer: string) => void;
-}) {
-  return (
-    <div className="rounded-lg bg-surface p-4">
-      {step && total && (
-        <p className="mb-2 text-xs font-medium text-[#148280]">확인 {step}/{total}</p>
-      )}
-      {item.span && <p className="mb-1 text-sm text-gray-400">"{item.span}"</p>}
-      <p className="mb-3 text-sm font-medium tracking-[-0.28px] text-[#161719]">{item.suggestion}</p>
-      <div className="flex flex-wrap gap-1.5">
-        {item.candidates.map((c, i) => (
-          <button
-            key={i}
-            type="button"
-            disabled={busy}
-            onClick={() => onAnswer(c)}
-            className="rounded-pill bg-pill-gray px-3 py-2 text-sm font-medium tracking-[-0.28px] text-[#161719] hover:brightness-95 disabled:opacity-50"
-          >
-            {formatCandidate(c, zone)}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function formatCandidate(c: string, zone: string): string {
-  if (c === "custom") return "직접 입력";
-  if (/^\d{4}-\d{2}-\d{2}T/.test(c) && dayjs(c).isValid()) {
-    return `${dayjs(c).tz(zone).format("M/D HH:mm")} ${zoneShort(zone)}`;
-  }
-  return c;
 }

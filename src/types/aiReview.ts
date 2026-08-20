@@ -1,5 +1,23 @@
 export type AiReviewStatus = "PROCESSING" | "READY" | "FAILED" | "CONFIRMED" | "SENT" | "EXPIRED";
 export type Confidence = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+export type AgentSessionStatus = "INTERRUPT" | "DONE" | "FAILED";
+
+// AI가 모호하다고 판단한 부분에 대해 실시간으로 던지는 질문 (API.md 10.1/10.3절)
+export interface AgentSessionItem {
+  span: string; // 원문에서 모호한 부분 그대로
+  category: string; // 예: REQUEST_INTENT, AMBIGUOUS_DEADLINE 등
+  reason: string; // 왜 모호한지
+  candidates: string[]; // 선택 가능한 후보들
+  suggestion: string; // AI 추천 문구 (placeholder 용도로도 씀)
+}
+
+export interface AgentSession {
+  threadId: string;
+  status: AgentSessionStatus;
+  step: number;
+  total: number;
+  item: AgentSessionItem | null;
+}
 
 export interface StructuredField<T> {
   value: T | null;
@@ -27,25 +45,6 @@ export interface AiReviewWarning {
   suggestedDeadline?: string;
 }
 
-// AI 에이전트 세션 (실서버 agentSession) - 애매한 표현이 있으면 INTERRUPT로 질문을 던진다
-export type AgentSessionStatus = "INTERRUPT" | "DONE" | "FAILED";
-
-export interface AmbiguityItem {
-  span: string; // 애매한 원문 조각 (예: "조금 더 고민해 보면?")
-  category: string;
-  reason: string;
-  candidates: string[]; // 사용자가 고를 후보들
-  suggestion: string; // 안내 문구
-}
-
-export interface AgentSession {
-  threadId: string;
-  status: AgentSessionStatus;
-  step?: number | null;
-  total?: number | null;
-  item?: AmbiguityItem | null;
-}
-
 export interface AiReview {
   id: string;
   conversationId: string;
@@ -62,13 +61,11 @@ export interface AiReview {
   };
   evidence: Evidence[];
   warnings: AiReviewWarning[];
-  agentSession?: AgentSession | null; // 없거나 null이면 애매함 없음
+  // AI 서비스가 비활성화된 로컬 fallback에서는 null (API.md 10.1절)
+  agentSession: AgentSession | null;
+  provider?: string;
   createdAt: string;
   expiresAt: string;
-}
-
-export interface AnswerAiReviewRequest {
-  answer: string;
 }
 
 export interface CreateAiReviewRequest {
@@ -88,4 +85,9 @@ export interface ConfirmAiReviewRequest {
 export interface SendAiReviewRequest {
   content: string;
   scheduledFor?: string | null;
+}
+
+// AI 모호성 질문에 답변 (API.md 10.3절)
+export interface AnswerAmbiguityRequest {
+  answer: string;
 }

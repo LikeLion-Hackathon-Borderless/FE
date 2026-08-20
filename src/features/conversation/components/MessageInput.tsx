@@ -42,12 +42,12 @@ export function MessageInput({ onSendAsIs, onRequestAIReview, disabled, clearSig
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-md bg-pill-gray px-3 py-2 text-sm text-gray-500 hover:brightness-95"
+            className="flex items-center gap-1.5 rounded-md bg-pill-gray px-3 py-2 text-sm text-label hover:brightness-95"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M0.714294 16.7858V3.21433C0.714294 2.83545 0.864804 2.47209 1.13271 2.20418C1.40062 1.93627 1.76399 1.78576 2.14287 1.78576H7.41429C7.74063 1.77625 8.06038 1.87881 8.3203 2.07635C8.58023 2.2739 8.76465 2.55451 8.84287 2.87148L9.28572 4.64291H17.8572C18.236 4.64291 18.5994 4.79342 18.8673 5.06132C19.1352 5.32923 19.2857 5.6926 19.2857 6.07148V16.7858C19.2857 17.1646 19.1352 17.528 18.8673 17.7959C18.5994 18.0638 18.236 18.2143 17.8572 18.2143H2.14287C1.76399 18.2143 1.40062 18.0638 1.13271 17.7959C0.864804 17.528 0.714294 17.1646 0.714294 16.7858Z" stroke="#9299A3" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M10.1857 8.92859V13.9286" stroke="#9299A3" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M7.68573 11.4286H12.6857" stroke="#9299A3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M0.714294 16.7858V3.21433C0.714294 2.83545 0.864804 2.47209 1.13271 2.20418C1.40062 1.93627 1.76399 1.78576 2.14287 1.78576H7.41429C7.74063 1.77625 8.06038 1.87881 8.3203 2.07635C8.58023 2.2739 8.76465 2.55451 8.84287 2.87148L9.28572 4.64291H17.8572C18.236 4.64291 18.5994 4.79342 18.8673 5.06132C19.1352 5.32923 19.2857 5.6926 19.2857 6.07148V16.7858C19.2857 17.1646 19.1352 17.528 18.8673 17.7959C18.5994 18.0638 18.236 18.2143 17.8572 18.2143H2.14287C1.76399 18.2143 1.40062 18.0638 1.13271 17.7959C0.864804 17.528 0.714294 17.1646 0.714294 16.7858Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M10.1857 8.92859V13.9286" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M7.68573 11.4286H12.6857" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             문서 첨부
           </button>
